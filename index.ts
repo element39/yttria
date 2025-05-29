@@ -1,3 +1,4 @@
+import { LLVMGen } from "./src/gen/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 
@@ -28,11 +29,10 @@ const l = new Lexer(body)
 const t = l.lex()
 const p = new Parser(t)
 const ast = p.parse()
-console.log(JSON.stringify(ast, null, 2));
 
-// const g = new Generator(ast)
-// const module = g.generate()
-// console.log(module.print())
+const g = new LLVMGen("test_mod", ast)
+const module = g.generate()
+console.log(module);
 
 // writeFileSync("out.ll", module.print());
 
