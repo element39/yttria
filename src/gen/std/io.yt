@@ -1,0 +1,5 @@
+extern fn printf(fmt: string) -> number;
+
+fn println(s: string) -> void {
+    printf("%s\n", s);
+}

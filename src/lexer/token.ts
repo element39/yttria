@@ -23,4 +23,5 @@ export const KEYWORDS: Record<string, TokenType> = {
     if: "Keyword",
     as: "Keyword",
     return: "Keyword",
+    extern: "Keyword",
 };

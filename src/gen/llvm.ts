@@ -1,5 +1,5 @@
 import vm from 'llvm-bindings';
-import { ProgramAST } from '../parser/ast';
+import { ASTType, Expression, FnCallAST, FnDeclarationAST, IdentifierAST, LiteralAST, MemberAccessAST, ProgramAST, ReturnExpressionAST } from '../parser/ast';
 import { CodeGen } from './gen';
 
 export class LLVMGen extends CodeGen {
@@ -8,6 +8,7 @@ export class LLVMGen extends CodeGen {
     private builder: vm.IRBuilder;
 
     private types: Record<string, vm.Type>;
+    private table: Partial<Record<ASTType, (e: Expression) => vm.Value | vm.Function>>;
 
     constructor(name: string, ast: ProgramAST) {
         super(name, ast);
@@ -17,24 +18,109 @@ export class LLVMGen extends CodeGen {
         this.builder = new vm.IRBuilder(this.ctx);
 
         this.types = {
-            i32: vm.Type.getInt32Ty(this.ctx),
+            string: vm.Type.getInt8PtrTy(this.ctx),
+            "string[]": vm.Type.getInt8PtrTy(this.ctx).getPointerTo(), // char**
+            number: vm.Type.getFloatTy(this.ctx),
             void: vm.Type.getVoidTy(this.ctx),
         };
+
+        this.table = {
+            FnDeclaration: (e) => this.generateFnDeclaration(e),
+        }
     }
 
     generate(): string {
-        const func = this.createFunction('add', this.types.i32, [this.types.i32, this.types.i32]);
+        for (const node of this.ast.body) {
+            this.table[node.type]?.(node);
+        }
 
-        this.createEntryBlock(func);
-        const [a, b] = this.getFunctionArgs(func);
-
-        const result = this.builder.CreateAdd(a, b);
-        this.builder.CreateRet(result);
-
-        if (vm.verifyFunction(func)) throw new Error('Function verification failed');
-        if (vm.verifyModule(this.module)) throw new Error('Function verification failed');
+        if (vm.verifyModule(this.module)) throw new Error('Module verification failed');
 
         return this.module.print();
+    }
+
+    private generateFnDeclaration(e: Expression): vm.Function {
+        const { name, returnType, params, body } = e as FnDeclarationAST;
+        const llvmReturnType = this.types[returnType] || vm.Type.getVoidTy(this.ctx);
+        const paramTypes = params.map(param => {
+            const t = this.types[param.typeAnnotation];
+            if (!t) throw new Error(`Unknown parameter type: ${param.typeAnnotation}`);
+            return t;
+        });
+
+        const func = this.createFunction(name, llvmReturnType, paramTypes);
+        const entry = this.createEntryBlock(func);
+
+        const args = this.getFunctionArgs(func);
+        const localVars: Record<string, vm.Value> = {};
+
+        for (let i = 0; i < params.length; i++) {
+            const param = params[i];
+            const llvmType = this.types[param.typeAnnotation];
+            if (!llvmType) throw new Error(`Unknown parameter type: ${param.typeAnnotation}`);
+            const localVar = this.builder.CreateAlloca(llvmType, null, param.name);
+            this.builder.SetInsertPoint(entry);
+            this.builder.CreateStore(args[i], localVar);
+            localVars[param.name] = localVar;
+        }
+
+        this.builder.SetInsertPoint(entry);
+        
+        let hasReturn = false;
+        for (const expr of body) {
+            const vmExpr = this.generateExpression(expr, localVars);
+            if (vmExpr instanceof vm.ReturnInst) {
+                hasReturn = true;
+                break;
+            }
+        }   
+
+        return func;
+    }
+    
+    private generateExpression(expr: Expression, localVars: Record<string, vm.Value>): vm.Value | vm.Function {
+        switch (expr.type) {
+            case "ReturnExpression":
+                const { argument } = expr as ReturnExpressionAST;
+                const value = this.generateExpression(argument, localVars);
+                if (!(value instanceof vm.Value)) {
+                    throw new Error(`Expected a value for return, got ${value}`);
+                }
+                return this.builder.CreateRet(value);
+            case "FnCall":
+                const { args, callee } = expr as FnCallAST;
+                const funcName = this.resolveCalleeName(callee);
+                const func = this.module.getFunction(funcName);
+                if (!func) {
+                    throw new Error(`Function ${funcName} not found`);
+                }
+                const argsMap = args.map((arg: Expression) => {
+                    const val = this.generateExpression(arg, localVars);
+                    if (!(val instanceof vm.Value)) throw new Error("Invalid argument value");
+                    return val;
+                });
+                return this.builder.CreateCall(func, argsMap, "calltmp");
+            default:
+                if (this.table[expr.type]) {
+                    return this.table[expr.type]!(expr);
+                } else {
+                    throw new Error(`Unknown expression type: ${expr.type}`);
+                }
+        }
+    }
+
+    private resolveCalleeName(expr: Expression): string {
+        if (expr.type === "Identifier") {
+            return (expr as IdentifierAST).value;
+        }
+        if (expr.type === "MemberAccess") {
+            const member = expr as MemberAccessAST;
+            return `${this.resolveCalleeName(member.object)}.${member.property}`;
+        }
+        if (expr.type === "Literal") {
+            return String((expr as LiteralAST).value);
+        }
+        throw new Error(`Unsupported callee type: ${expr.type}`);
     }
 
     private createFunction(

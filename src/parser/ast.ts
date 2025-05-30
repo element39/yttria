@@ -13,7 +13,7 @@ export type ASTType =
     | "BinaryExpression"
     | "UnaryExpression"
 
-    | "ReturnStatement";
+    | "ReturnExpression";
 
 // we ONLY got expressions here fr
 export type Expression = {
@@ -42,6 +42,10 @@ export type FnDeclarationAST = Expression & {
     params: FnParamAST[];
     returnType: string;
     body: Expression[];
+};
+
+export type ExternalFnDeclarationAST = Omit<FnDeclarationAST, "body" | "type"> & {
+    type: "ExternalFnDeclaration";
 };
 
 export type FnParamAST = Expression & {
@@ -75,8 +79,8 @@ export type BinaryExpressionAST = Expression & {
     right: Expression;
 };
 
-export type ReturnStatementAST = Expression & {
-    type: "ReturnStatement";
+export type ReturnExpressionAST = Expression & {
+    type: "ReturnExpression";
     argument: Expression;
 };
 

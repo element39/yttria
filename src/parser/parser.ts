@@ -1,16 +1,17 @@
 import { Token, TokenType } from "../lexer/token";
 import {
-	BinaryExpressionAST,
-	Expression,
-	FnCallAST,
-	FnDeclarationAST,
-	IdentifierAST,
-	LiteralAST,
-	MemberAccessAST,
-	ProgramAST,
-	ReturnStatementAST,
-	UnaryExpressionAST,
-	UseDeclarationAST
+    BinaryExpressionAST,
+    Expression,
+    ExternalFnDeclarationAST,
+    FnCallAST,
+    FnDeclarationAST,
+    IdentifierAST,
+    LiteralAST,
+    MemberAccessAST,
+    ProgramAST,
+    ReturnExpressionAST,
+    UnaryExpressionAST,
+    UseDeclarationAST
 } from "./ast";
 
 const PRECEDENCE: Record<string, number> = {
@@ -96,7 +97,7 @@ export class Parser {
         const t = this.peek()!;
         if (t.literal === "use") return this.visitUseDeclaration();
         if (t.literal === "fn") return this.visitFunctionDeclaration();
-        if (t.literal === "return") return this.parseReturnStatement();
+        if (t.literal === "return") return this.parseReturnExpression();
 
         return null;
     }
@@ -156,10 +157,47 @@ export class Parser {
         return fn;
     }
 
-    private parseReturnStatement(): ReturnStatementAST {
+    private visitExternalFunctionDeclaration(): ExternalFnDeclarationAST {
+        this.expect("Keyword", "extern");
+        this.expect("Keyword", "fn");
+
+        // same as above but without body
+        const name = this.expect("Identifier");
+        const fn: ExternalFnDeclarationAST = {
+            type: "ExternalFnDeclaration",
+            name: name.literal,
+            params: [],
+            returnType: "void"
+        };
+
+        this.expect("Delimiter", "(");
+        while (!this.match("Delimiter", ")")) {
+            const pn = this.expect("Identifier");
+            this.expect("Delimiter", ":");
+            const pt = this.expect("Identifier");
+            const isArray = this.match("Delimiter", "[") && this.match("Delimiter", "]");
+            fn.params.push({
+                type: "FnParam",
+                name: pn.literal,
+                typeAnnotation: pt.literal,
+                isArray
+            });
+            if (this.match("Delimiter", ",")) continue;
+        }
+
+        if (this.match("Operator", "->")) {
+            const rt = this.expect("Identifier");
+            fn.returnType = rt.literal;
+        }
+
+        this.expect("Delimiter", ";");
+        return fn;
+    }
+
+    private parseReturnExpression(): ReturnExpressionAST {
         this.expect("Keyword", "return");
         const arg = this.parseExpression();
-        return { type: "ReturnStatement", argument: arg! };
+        return { type: "ReturnExpression", argument: arg! };
     }
 
     private parseExpression(precedence = 0): Expression | null {

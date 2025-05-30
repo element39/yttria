@@ -30,6 +30,7 @@ const t = l.lex()
 const p = new Parser(t)
 const ast = p.parse()
 
+console.log(JSON.stringify(ast, null, 2));
 const g = new LLVMGen("test_mod", ast)
 const module = g.generate()
 console.log(module);
