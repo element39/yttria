@@ -54,7 +54,13 @@ export class Lexer {
                 if (this.pos < this.src.length) {
                     literal += this.advance();
                 }
-                literal = literal.slice(1, -1);
+                literal = literal
+                    .slice(1, -1)
+                    .replace(/\\n/g, "\n")
+                    .replace(/\\t/g, "\t")
+                    .replace(/\\r/g, "\r")
+                    .replace(/\\\"/g, "\"")
+                    .replace(/\\\\/g, "\\");
                 
                 this.tokens.push({
                     type: "String",

@@ -5,6 +5,7 @@ export type ASTType =
     | "UseDeclaration"
 
     | "FnDeclaration"
+    | "ExternalFnDeclaration"
     | "FnParam"
     | "FnCall"
 
@@ -81,7 +82,7 @@ export type BinaryExpressionAST = Expression & {
 
 export type ReturnExpressionAST = Expression & {
     type: "ReturnExpression";
-    argument: Expression;
+    argument: Expression | null;
 };
 
 export type UnaryExpressionAST = Expression & {

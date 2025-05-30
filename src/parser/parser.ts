@@ -97,6 +97,7 @@ export class Parser {
         const t = this.peek()!;
         if (t.literal === "use") return this.visitUseDeclaration();
         if (t.literal === "fn") return this.visitFunctionDeclaration();
+        if (t.literal === "extern") return this.visitExternalFunctionDeclaration();
         if (t.literal === "return") return this.parseReturnExpression();
 
         return null;
@@ -196,6 +197,10 @@ export class Parser {
 
     private parseReturnExpression(): ReturnExpressionAST {
         this.expect("Keyword", "return");
+        const next = this.peek();
+        if (!next || next.type === "EOL" || (next.type === "Delimiter" && (next.literal === ";" || next.literal === "}"))) {
+            return { type: "ReturnExpression", argument: null };
+        }
         const arg = this.parseExpression();
         return { type: "ReturnExpression", argument: arg! };
     }
