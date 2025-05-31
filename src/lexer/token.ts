@@ -11,6 +11,7 @@ export type TokenType =
 
     | "Number"
     | "String"
+    | "TemplateLiteral"
 
 export type Token = {
     type: TokenType;

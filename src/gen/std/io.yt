@@ -3,3 +3,7 @@ extern fn printf(fmt: string) -> number;
 fn println(s: string) -> void {
     printf("%s\n", s);
 }
+
+fn print(s: string) -> void {
+    printf("%s", s);
+}

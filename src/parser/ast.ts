@@ -11,6 +11,7 @@ export type ASTType =
 
     | "MemberAccess"
     | "Literal"
+    | "TemplateLiteral"
     | "BinaryExpression"
     | "UnaryExpression"
 
@@ -71,6 +72,11 @@ export type MemberAccessAST = Expression & {
 export type LiteralAST = Expression & {
     type: "Literal";
     value: string | number;
+};
+
+export type TemplateLiteralAST = Expression & {
+    type: "TemplateLiteral";
+    parts: (string | Expression)[]; // eg ["5+3= ", { type: "BinaryExpression", operator: "+", ... }]
 };
 
 export type BinaryExpressionAST = Expression & {

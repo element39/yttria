@@ -254,17 +254,32 @@ export class Parser {
             const id = this.advance();
             return { type: "Identifier", value: id.literal } as IdentifierAST;
         }
+
         if (t.type === "String" || t.type === "Number") {
             const lit = this.advance();
             const val = t.type === "Number" ? parseFloat(lit.literal) : lit.literal;
             return { type: "Literal", value: val } as LiteralAST;
         }
+
+        // if (t.type === "TemplateLiteral") {
+        //     this.advance();
+        //     const value = t.literal; // eg 5+3 = {5+3} where {...} is the expression. similar to ${...} in JS
+        //     const parts: (string | Expression)[] = [];
+
+        //     console.log(value);
+            
+        //     return { type: "TemplateLiteral", parts } as TemplateLiteralAST;
+        // }
+
         if (t.type === "Delimiter" && t.literal === "(") {
             this.advance();
             const expr = this.parseExpression();
             this.expect("Delimiter", ")");
             return expr;
         }
+
+        this.advance();
+
         return null;
     }
 

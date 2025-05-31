@@ -60,7 +60,7 @@ export class Lexer {
                     .replace(/\\t/g, "\t")
                     .replace(/\\r/g, "\r")
                     .replace(/\\\"/g, "\"")
-                    .replace(/\\\\/g, "\\");
+                    .replace(/\\\\/g, "\\")
                 
                 this.tokens.push({
                     type: "String",

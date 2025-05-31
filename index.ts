@@ -1,4 +1,4 @@
-import { writeFileSync } from "fs";
+// import { writeFileSync } from "fs";
 import { LLVMGen } from "./src/gen/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
@@ -29,7 +29,7 @@ import { ImportResolver } from "./src/resolver/resolver";
 const body = `
     use "std/io";
     fn main(args: string[]) -> int {
-        io.println("Hello, World!");
+        io.println("<3 LLVM");
     }
 `
 
@@ -42,24 +42,24 @@ const projectAST = p.parse()
 const resolver = new ImportResolver("src/gen/std", "src");
 const ast = resolver.mergeWithProjectAST(projectAST);
 
-const g = new LLVMGen("test_mod", ast)
+const g = new LLVMGen("test_mod", ast);
 const module = g.generate()
 
-writeFileSync("out.ll", module);
+// writeFileSync("out.ll", module);
 
-const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s"]);
-if (llc.exitCode !== 0) {
-    console.error("LLC compilation failed:", new TextDecoder().decode(llc.stderr));
-    process.exit(1);
-}
+// const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s"]);
+// if (llc.exitCode !== 0) {
+//     console.error("LLC compilation failed:", new TextDecoder().decode(llc.stderr));
+//     process.exit(1);
+// }
 
-const ggc = Bun.spawnSync(["gcc", "out.s", "-o", "out", "-lm"]);
-if (ggc.exitCode !== 0) {
-    console.error("GCC compilation failed:", new TextDecoder().decode(ggc.stderr));
-    process.exit(1);
-}
+// const ggc = Bun.spawnSync(["gcc", "out.s", "-o", "out", "-lm"]);
+// if (ggc.exitCode !== 0) {
+//     console.error("GCC compilation failed:", new TextDecoder().decode(ggc.stderr));
+//     process.exit(1);
+// }
 
-const exe = Bun.spawnSync(["./out"]);
-console.log("Exit code:", exe.exitCode);
-console.log("Output:\n");
-process.stdout.write(new TextDecoder().decode(exe.stdout));
+// const exe = Bun.spawnSync(["./out"]);
+// console.log("Exit code:", exe.exitCode);
+// console.log("Output:\n");
+// process.stdout.write(new TextDecoder().decode(exe.stdout));
