@@ -30,6 +30,7 @@ const body = `
     use "std/io";
     fn main(args: string[]) -> int {
         io.println("<3 LLVM");
+        io.println(\`5 + 3 = {5 + 3}\`);
     }
 `
 
@@ -44,6 +45,8 @@ const ast = resolver.mergeWithProjectAST(projectAST);
 
 const g = new LLVMGen("test_mod", ast);
 const module = g.generate()
+
+//console.log(JSON.stringify(ast, null, 2));
 
 // writeFileSync("out.ll", module);
 

@@ -1,3 +1,4 @@
+import { Lexer } from "../lexer/lexer";
 import { Token, TokenType } from "../lexer/token";
 import {
     BinaryExpressionAST,
@@ -10,6 +11,7 @@ import {
     MemberAccessAST,
     ProgramAST,
     ReturnExpressionAST,
+    TemplateLiteralAST,
     UnaryExpressionAST,
     UseDeclarationAST
 } from "./ast";
@@ -261,15 +263,32 @@ export class Parser {
             return { type: "Literal", value: val } as LiteralAST;
         }
 
-        // if (t.type === "TemplateLiteral") {
-        //     this.advance();
-        //     const value = t.literal; // eg 5+3 = {5+3} where {...} is the expression. similar to ${...} in JS
-        //     const parts: (string | Expression)[] = [];
+        if (t.type === "TemplateLiteral") {
+            const lit = this.advance();
+            const raw = lit.literal;     // eg "5 + 3 = {5+3}"
+            const parts: (string|Expression)[] = [];
+            const regex = /\{([^}]+)\}/g;
+            let lastIndex = 0, match: RegExpExecArray|null;
 
-        //     console.log(value);
-            
-        //     return { type: "TemplateLiteral", parts } as TemplateLiteralAST;
-        // }
+            while ((match = regex.exec(raw)) !== null) {
+                if (match.index > lastIndex) {
+                    parts.push(raw.substring(lastIndex, match.index));
+                }
+
+                const exprStr = match[1];
+                const exprTokens = new Lexer(exprStr).lex();
+                const expr = new Parser(exprTokens).parseExpression();
+                parts.push(expr!);
+                lastIndex = match.index + match[0].length;
+            }
+
+            if (lastIndex < raw.length) {
+                parts.push(raw.substring(lastIndex));
+            }
+
+            console.log(parts)
+            return { type: "TemplateLiteral", parts } as TemplateLiteralAST;
+        }
 
         if (t.type === "Delimiter" && t.literal === "(") {
             this.advance();

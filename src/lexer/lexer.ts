@@ -39,9 +39,11 @@ export class Lexer {
             }
 
             // string literals
-            if (char === '"') {
+            if (char === '"' || char === "'" || char === '`') {
+                const delim = char;
                 let literal = char;
-                while (this.pos < this.src.length && this.src[this.pos] !== '"') {
+                
+                while (this.pos < this.src.length && this.src[this.pos] !== delim) {
                     if (this.src[this.pos] === '\\') {
                         literal += this.advance();
                         if (this.pos < this.src.length) {
@@ -63,7 +65,7 @@ export class Lexer {
                     .replace(/\\\\/g, "\\")
                 
                 this.tokens.push({
-                    type: "String",
+                    type: char === '`' ? "TemplateLiteral" : "String",
                     literal
                 });
                 continue;
