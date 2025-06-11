@@ -1,3 +1,5 @@
+[| example.y |]
+
 [|  
     yttria
     a blazingly fast*, universal* and easy-to-use* programming language

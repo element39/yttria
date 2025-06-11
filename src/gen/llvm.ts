@@ -1,163 +1,145 @@
 import vm from "llvm-bindings";
-import { ASTType, ExternalFnDeclarationAST, FnCallAST, FnDeclarationAST, FnParamAST, ProgramAST } from "../parser/ast";
+import { ASTType, BinaryExpressionAST, FnCallAST, FnDeclarationAST, LiteralAST, MemberAccessAST, ProgramAST, ReturnExpressionAST } from "../parser/ast";
 import { CodeGen } from "./gen";
+import { LLVMWrapper } from "./llvmwrapper";
 
 export class LLVMGen extends CodeGen {
-    private ctx: vm.LLVMContext;
-    private module: vm.Module;
-    private builder: vm.IRBuilder;
-    private types: Partial<Record<string, vm.Type>>
-    private table: Partial<Record<ASTType, (e: any) => vm.Value | vm.Function>>;
-    private currentParams: FnParamAST[] | null = null;
-    private localVars: Map<string, vm.Value> = new Map();
+    private wrapper: LLVMWrapper;
+    private table: Partial<Record<ASTType, (ast: any) => vm.Value | vm.Function | void>> = {};
 
     constructor(name: string, ast: ProgramAST) {
         super(name, ast);
-
-        this.ctx = new vm.LLVMContext();
-        this.module = new vm.Module(name, this.ctx);
-        this.builder = new vm.IRBuilder(this.ctx);
-        this.types = {
-            void: vm.Type.getVoidTy(this.ctx),
-            string: vm.Type.getInt8PtrTy(this.ctx),
-            int: vm.Type.getInt32Ty(this.ctx),
-            number: vm.Type.getFloatTy(this.ctx),
-        };
-        
-        Object.entries(this.types).forEach(([key, type]) => {
-            if (key.endsWith("[]") || key === "void" || !type) return;
-            this.types[key + "[]"] = type.getPointerTo();
-        });
+        this.wrapper = new LLVMWrapper(name);
 
         this.table = {
-            FnDeclaration: this.visitFnDeclaration,
-            ExternalFnDeclaration: this.visitExternalFnDecl,
-            FnCall: this.visitFnCall,
+            ExternalFnDeclaration: this.genExternalFnDeclaration,
+            FnDeclaration: this.genFnDeclaration,
+            FnCall: this.wrapper.genFnCall,
+            MemberAccess: this.wrapper.genMemberAccess,
+            ReturnExpression: this.genReturnExpression,
 
-            Literal: this.visitLiteral,
-        };
-    }
-
-    generate(): string {
-        for (const node of this.ast.body) this.table[node.type]?.(node);
-        if (vm.verifyModule(this.module)) throw new Error("Module verification failed");
-
-        return this.module.print();
-    }
-
-    private visitFnDeclaration = (e: FnDeclarationAST): vm.Function => {
-        const returnType = this.getLLVMType(e.returnType);
-
-        const paramTypes: vm.Type[] = [];
-        this.currentParams = e.params;
-        this.localVars.clear();
-
-        for (const param of e.params) {
-            const type = this.types[param.typeAnnotation];
-            if (!type) {
-                throw new Error(`Unknown parameter type: ${param.type}`);
-            }
-            paramTypes.push(type);
-        }
-
-        const fn = this.createFunction(e.name, returnType, paramTypes);
-        const entry = this.createEntryBlock(fn);
-        const args = this.getFunctionArgs(fn);
-
-        this.builder.SetInsertPoint(entry);
-
-        for (let i = 0; i < args.length; i++) {
-        const param = this.currentParams?.[i];
-        if (param) {
-            const type = this.types[param.typeAnnotation];
-            if (!type) {
-                throw new Error(`Unknown parameter type: ${param.typeAnnotation}`);
-            }
-            const alloca = this.builder.CreateAlloca(type, null, param.name);
-            this.builder.CreateStore(args[i], alloca);
-            this.localVars.set(param.name, alloca);
+            Literal: this.genLiteral,
+            BinaryExpression: this.genBinaryExpression,
         }
     }
+    
+    override generate(): string {        
+        this.ast.body.forEach((e) => this.table[e.type]?.call(this, e));
+        return this.wrapper.print();
+    }
 
-        let returned = false;
-        for (const bxpr of e.body) {
-            const value = this.table[bxpr.type]?.(bxpr);
-            if (bxpr.type === "ReturnExpression") {
-                if (value) this.builder.CreateRet(value);
-                else this.builder.CreateRetVoid();
+    private genExternalFnDeclaration(ast: FnDeclarationAST): vm.Function {
+        const fn = this.wrapper.createFunction(
+            ast.name,
+            this.wrapper.getType(ast.returnType),
+            ast.params.map((p) => this.wrapper.getType(p.typeAnnotation)),
+            vm.Function.LinkageTypes.ExternalLinkage
+        );
 
-                returned = true
+        return fn;
+    }
+
+    private genFnDeclaration(ast: FnDeclarationAST): vm.Function {
+        const fn = this.wrapper.createFunction(
+            ast.name,
+            this.wrapper.getType(ast.returnType),
+            ast.params.map((p) => this.wrapper.getType(p.typeAnnotation)),
+            vm.Function.LinkageTypes.InternalLinkage
+        );
+
+        const entry = this.wrapper.entryBlock(fn);
+        
+        // body
+        let ret = false;
+        for (const e of ast.body) {
+            this.table[e.type]?.call(this, e)
+
+            if (e.type === "ReturnExpression") {
+                ret = true;
                 break;
             }
         }
 
-        if (!returned) {
-            if (returnType.isVoidTy()) this.builder.CreateRetVoid();
-            if (e.name === "main" && returnType.isIntegerTy(32)) this.builder.CreateRet(vm.ConstantInt.get(returnType, 0));
-        }
-
-        if (this.builder.GetInsertBlock()?.getTerminator() === null) {
-            throw new Error(`Function ${e.name} does not end with a return statement`);
-        }
-
-        this.currentParams = null;
-        return fn;
-    };
-
-    private visitExternalFnDecl = (e: ExternalFnDeclarationAST): vm.Function => {
-        const returnType = this.getLLVMType(e.returnType);
-
-        const paramTypes: vm.Type[] = [];
-        for (const param of e.params) {
-            const type = this.types[param.typeAnnotation];
-            if (!type) {
-                throw new Error(`Unknown parameter type: ${param.typeAnnotation}`);
+        if (!ret) {
+            if (this.wrapper.getType(ast.returnType).isVoidTy()) {
+                this.wrapper.ret();
+            } else if (ast.name === "main" && ast.returnType === "int") {
+                this.wrapper.ret(this.wrapper.constInt(0));
+            } else {
+                throw new Error(`Function ${ast.name} must return a value of type ${ast.returnType}`);
             }
-            paramTypes.push(type);
         }
 
-        return this.createFunction(e.name, returnType, paramTypes, vm.Function.LinkageTypes.ExternalLinkage);
-    };
+        this.wrapper.verify(fn);
+        return fn;
+    }
 
-    private visitFnCall = (e: FnCallAST): vm.Value => {
-        //console.log(e)
-    };
-
-    private visitLiteral = (e: { value: string | number }): vm.Value => {
-        if (typeof e.value === "number") {
-            return vm.ConstantFP.get(this.getLLVMType("number"), e.value);
-        } else if (typeof e.value === "string") {
-            return vm.ConstantDataArray.getString(this.ctx, e.value, true);
+    private genReturnExpression(ast: ReturnExpressionAST): void {
+        const arg = ast.argument;
+        if (arg) {
+            const a = this.table[arg.type]?.call(this, arg);
+            if (a) this.wrapper.ret(a);
+        } else {
+            this.wrapper.ret()
         }
-        throw new Error(`Unsupported literal type: ${typeof e.value}`);
-    };
-
-    private createFunction(
-        name: string,
-        returnType: vm.Type,
-        paramTypes: vm.Type[],
-        linkage: number = vm.Function.LinkageTypes.ExternalLinkage
-    ): vm.Function {
-        return vm.Function.Create(vm.FunctionType.get(returnType, paramTypes, false), linkage, name, this.module);
     }
 
-    private createEntryBlock(func: vm.Function, name = "entry"): vm.BasicBlock {
-        const entryBB = vm.BasicBlock.Create(this.ctx, name, func);
-        this.builder.SetInsertPoint(entryBB);
-        return entryBB;
-    }
-
-    private getFunctionArgs(func: vm.Function): vm.Value[] {
-        const args: vm.Value[] = [];
-        for (let i = 0; i < func.arg_size(); i++) {
-            args.push(func.getArg(i));
+    private genLiteral(ast: LiteralAST): vm.Value {
+        switch (typeof ast.value) {
+            case "number":
+                return this.wrapper.constInt(ast.value);
+            case "string":
+                return this.wrapper.constStringPtr(ast.value);
+            default:
+                throw new Error(`Unsupported literal type: ${typeof ast.value}`);
         }
-        return args;
     }
 
-    private getLLVMType(typeName: keyof typeof this.types): vm.Type {
-    const type = this.types[typeName];
-    if (!type) throw new Error(`Unknown type: ${typeName}`);
-    return type;
+    private genBinaryExpression(ast: BinaryExpressionAST): vm.Value {
+        const left = this.table[ast.left.type]?.call(this, ast.left);
+        const right = this.table[ast.right.type]?.call(this, ast.right);
+
+        if (!left || !right) {
+            throw new Error(`Binary expression requires both left and right operands`);
+        }
+
+        switch (ast.operator) {
+            case "+":
+                return this.wrapper.builder.CreateAdd(left, right, "addtmp");
+            case "-":
+                return this.wrapper.builder.CreateSub(left, right, "subtmp");
+            case "*":
+                return this.wrapper.builder.CreateMul(left, right, "multmp");
+            case "/":
+                return this.wrapper.builder.CreateSDiv(left, right, "divtmp");
+            default:
+                throw new Error(`Unsupported binary operator: ${ast.operator}`);
+        }
+    }
+
+    private genFnCall(ast: FnCallAST): vm.Value {
+        const callee = this.table[ast.callee.type]?.call(this, ast.callee);
+        if (!callee || !(callee instanceof vm.Function)) {
+            throw new Error(`Function call requires a valid function as callee`);
+        }
+
+        const args = ast.args.map(arg => {
+            const value = this.table[arg.type]?.call(this, arg);
+            if (!value) {
+                throw new Error(`Function call argument must be a valid value`);
+            }
+            return value;
+        });
+
+        return this.wrapper.call(callee, args, (ast.callee as LiteralAST).value as string || "");
+    }
+
+    private genMemberAccess(ast: MemberAccessAST): vm.Value {
+        const object = this.table[ast.object.type]?.call(this, ast.object);
+        if (!object) {
+            throw new Error(`Member access requires a valid object`);
+        }
+
+        c
     }
 }
