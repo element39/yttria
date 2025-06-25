@@ -38,43 +38,9 @@ export class Lexer {
                 continue;
             }
 
-            // string literals
-            if (char === '"' || char === "'" || char === '`') {
-                const delim = char;
-                let literal = char;
-                
-                while (this.pos < this.src.length && this.src[this.pos] !== delim) {
-                    if (this.src[this.pos] === '\\') {
-                        literal += this.advance();
-                        if (this.pos < this.src.length) {
-                            literal += this.advance();
-                        }
-                    } else {
-                        literal += this.advance();
-                    }
-                }
-                if (this.pos < this.src.length) {
-                    literal += this.advance();
-                }
-                literal = literal
-                    .slice(1, -1)
-                    .replace(/\\n/g, "\n")
-                    .replace(/\\t/g, "\t")
-                    .replace(/\\r/g, "\r")
-                    .replace(/\\\"/g, "\"")
-                    .replace(/\\\\/g, "\\")
-                
-                this.tokens.push({
-                    type: char === '`' ? "TemplateLiteral" : "String",
-                    literal
-                });
-                continue;
-            }
-
             // numbers
             if (/\d/.test(char)) {
                 let literal = char;
-                // Handle decimal numbers
                 let isDecimal = false;
 
                 while (this.pos < this.src.length && (/\d/.test(this.src[this.pos]) || (!isDecimal && this.src[this.pos] === '.'))) {
@@ -94,7 +60,7 @@ export class Lexer {
 
             // operators
             if (char === '-' && this.src[this.pos] === '>') {
-                this.advance(); // consume '>'
+                this.advance();
                 this.tokens.push({
                     type: "Operator",
                     literal: "->"
@@ -116,6 +82,15 @@ export class Lexer {
             }
 
             // delimiters
+            if (char === ':' && this.src[this.pos] === '=') {
+                this.advance();
+                this.tokens.push({
+                    type: "Operator",
+                    literal: ":="
+                });
+                continue;
+            }
+
             if (`.,;:(){}[]"'\``.includes(char)) {
                 this.tokens.push({
                     type: "Delimiter",

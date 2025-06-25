@@ -3,3 +3,4 @@ node_modules
 out.exe
 out.ll
 out.s
+ast.json

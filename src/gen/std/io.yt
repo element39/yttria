@@ -1,9 +1,0 @@
-extern vararg fn printf(fmt: string) -> int;
-
-fn println(s: string) -> void {
-    printf("%s\n", s);
-}
-
-fn print(s: string) -> void {
-    printf("%s", s);
-}

@@ -1,99 +1,35 @@
-export type ASTType =
+export type ExpressionType =
     | "Program"
-    | "Identifier"
 
-    | "UseDeclaration"
-
-    | "FnDeclaration"
-    | "ExternalFnDeclaration"
-    | "FnParam"
-    | "FnCall"
-
-    | "MemberAccess"
-    | "Literal"
-    | "TemplateLiteral"
     | "BinaryExpression"
-    | "UnaryExpression"
 
-    | "ReturnExpression";
+    | "NumberLiteral"
+    | "Identifier"
+;
 
-// we ONLY got expressions here fr
 export type Expression = {
-    type: ASTType;
+    type: ExpressionType;
+    // [key: string]: any;
 }
 
-export type IdentifierAST = {
-    type: "Identifier";
-    value: string;
-}
-
-export type ProgramAST = Expression & {
+export type ProgramExpression = Expression & {
     type: "Program";
     body: Expression[];
-}
-
-export type UseDeclarationAST = Expression & {
-    type: "UseDeclaration";
-    name: string;
-    alias?: string;
 };
 
-export type FnDeclarationAST = Expression & {
-    type: "FnDeclaration";
-    name: string;
-    params: FnParamAST[];
-    returnType: string;
-    body: Expression[];
-};
-
-export type ExternalFnDeclarationAST = Omit<FnDeclarationAST, "body" | "type"> & {
-    type: "ExternalFnDeclaration";
-    isVariadic?: boolean;
-};
-
-export type FnParamAST = Expression & {
-    type: "FnParam";
-    name: string;
-    typeAnnotation: string;
-    isArray: boolean;
-};
-
-export type FnCallAST = Expression & {
-    type: "FnCall";
-    callee: Expression;
-    args: Expression[];
-};
-
-export type MemberAccessAST = Expression & {
-    type: "MemberAccess";
-    object: Expression;
-    property: string;
-};
-
-export type LiteralAST = Expression & {
-    type: "Literal";
-    value: string | number;
-};
-
-export type TemplateLiteralAST = Expression & {
-    type: "TemplateLiteral";
-    parts: (string | Expression)[]; // eg ["5+3= ", { type: "BinaryExpression", operator: "+", ... }]
-};
-
-export type BinaryExpressionAST = Expression & {
+export type BinaryExpression = Expression & {
     type: "BinaryExpression";
-    operator: string;
+    operator: "+" | "-" | "*" | "/";
     left: Expression;
     right: Expression;
 };
 
-export type ReturnExpressionAST = Expression & {
-    type: "ReturnExpression";
-    argument: Expression | null;
+export type NumberLiteral = Expression & {
+    type: "NumberLiteral";
+    value: number;
 };
 
-export type UnaryExpressionAST = Expression & {
-    type: "UnaryExpression";
-    operator: string;
-    argument: Expression;
+export type Identifier = Expression & {
+    type: "Identifier";
+    name: string;
 };

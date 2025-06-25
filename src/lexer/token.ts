@@ -10,8 +10,6 @@ export type TokenType =
     | "Delimiter"
 
     | "Number"
-    | "String"
-    | "TemplateLiteral"
 
 export type Token = {
     type: TokenType;
@@ -20,10 +18,5 @@ export type Token = {
 
 export const KEYWORDS: Record<string, TokenType> = {
     fn: "Keyword",
-    use: "Keyword",
-    if: "Keyword",
-    as: "Keyword",
     return: "Keyword",
-    extern: "Keyword",
-    vararg: "Keyword",
 };
