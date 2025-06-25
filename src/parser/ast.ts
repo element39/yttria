@@ -48,6 +48,7 @@ export type FnDeclarationAST = Expression & {
 
 export type ExternalFnDeclarationAST = Omit<FnDeclarationAST, "body" | "type"> & {
     type: "ExternalFnDeclaration";
+    isVariadic?: boolean;
 };
 
 export type FnParamAST = Expression & {

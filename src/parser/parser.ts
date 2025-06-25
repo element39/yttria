@@ -162,6 +162,15 @@ export class Parser {
 
     private visitExternalFunctionDeclaration(): ExternalFnDeclarationAST {
         this.expect("Keyword", "extern");
+        // if next token is "vararg", we treat it as a variadic function, else if its fn continue
+        let vararg = false;
+        // fn varag println...
+        if (this.match("Keyword", "vararg")) {
+            vararg = true;
+        } else if (!this.match("Keyword", "fn")) {
+            throw new Error("Expected 'fn' or 'vararg' after 'extern'");
+        }
+
         this.expect("Keyword", "fn");
 
         // same as above but without body
@@ -170,7 +179,8 @@ export class Parser {
             type: "ExternalFnDeclaration",
             name: name.literal,
             params: [],
-            returnType: "void"
+            returnType: "void",
+            isVariadic: vararg
         };
 
         this.expect("Delimiter", "(");

@@ -25,4 +25,5 @@ export const KEYWORDS: Record<string, TokenType> = {
     as: "Keyword",
     return: "Keyword",
     extern: "Keyword",
+    vararg: "Keyword",
 };

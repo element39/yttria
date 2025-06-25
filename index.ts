@@ -1,5 +1,4 @@
 // import { writeFileSync } from "fs";
-import { LLVMGen } from "./src/gen/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 import { ImportResolver } from "./src/resolver/resolver";
@@ -31,6 +30,7 @@ import { ImportResolver } from "./src/resolver/resolver";
         use "std/io";
         fn main(args: string[]) -> int {
             io.println("Hello, World!");
+            return 9;
         }
     `
 
@@ -43,11 +43,11 @@ import { ImportResolver } from "./src/resolver/resolver";
     const resolver = new ImportResolver("src/gen/std", "src");
     const ast = resolver.mergeWithProjectAST(projectAST);
 
-    //console.log(JSON.stringify(ast, null, 2));
+    console.log(JSON.stringify(ast, null, 2));
 
-    const g = new LLVMGen("test_mod", ast);
-    const module = g.generate()
-    console.log(module);    
+    // const g = new LLVMGen("test_mod", ast);
+    // const module = g.generate()
+    // console.log(module);    
 
     //console.log(JSON.stringify(ast, null, 2));
 

@@ -1,4 +1,4 @@
-extern fn printf(fmt: string) -> int;
+extern vararg fn printf(fmt: string) -> int;
 
 fn println(s: string) -> void {
     printf("%s\n", s);
