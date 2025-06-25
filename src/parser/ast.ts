@@ -2,9 +2,10 @@ export type ExpressionType =
     | "Program"
     
     | "ConstDeclaration"
+    | "FunctionDeclaration"
+    | "ReturnExpression"
     
     | "BinaryExpression"
-
     | "NumberLiteral"
     | "Identifier"
 ;
@@ -24,6 +25,19 @@ export type ConstDeclaration = Expression & {
     name: Identifier;
     value: Expression;
     typeAnnotation?: Identifier;
+};
+
+export type FunctionDeclaration = Expression & {
+    type: "FunctionDeclaration";
+    name: Identifier;
+    parameters: Identifier[];
+    returnType?: Identifier;
+    body: Expression[];
+};
+
+export type ReturnExpression = Expression & {
+    type: "ReturnExpression";
+    value: Expression;
 };
 
 export type BinaryExpression = Expression & {

@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token";
-import { BinaryExpression, ConstDeclaration, Expression, Identifier, NumberLiteral, ProgramExpression } from "./ast";
+import { BinaryExpression, ConstDeclaration, Expression, FunctionDeclaration, Identifier, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast";
 
 export class Parser {
     private tokens: Token[];
@@ -26,11 +26,11 @@ export class Parser {
         return this.program;
     }
 
-    private parseExpression(): BinaryExpression | NumberLiteral | Identifier | undefined {
+    private parseExpression(): Expression | undefined {
         return this.parseAdditive();
     }
 
-    private parseAdditive(): BinaryExpression | NumberLiteral | Identifier | undefined {
+    private parseAdditive(): Expression | undefined {
         let left = this.parseMultiplicative()!;
         while (this.peek() && (this.peek()!.literal === "+" || this.peek()!.literal === "-")) {
             const operator = this.advance()!.literal as "+" | "-";
@@ -45,7 +45,7 @@ export class Parser {
         return left;
     }
 
-    private parseMultiplicative(): BinaryExpression | NumberLiteral | Identifier | undefined {
+    private parseMultiplicative(): Expression | undefined {
         let left = this.parsePrimary()!;
         while (this.peek() && (this.peek()!.literal === "*" || this.peek()!.literal === "/")) {
             const operator = this.advance()!.literal as "*" | "/";
@@ -60,25 +60,9 @@ export class Parser {
         return left;
     }
 
-    private parsePrimary(): NumberLiteral | Identifier | BinaryExpression | undefined {
+    private parsePrimary(): Expression | undefined {
         const tok = this.peek();
         if (!tok) return undefined;
-
-        // if (tok.type === "Number") {
-        //     this.advance();
-        //     return {
-        //         type: "NumberLiteral",
-        //         value: Number(tok.literal)
-        //     } as NumberLiteral;
-        // }
-
-        // if (tok.type === "Identifier") {
-        //     this.advance();
-        //     return {
-        //         type: "Identifier",
-        //         name: tok.literal
-        //     } as Identifier;
-        // }
 
         switch (tok.type) {
             case "Number":
@@ -101,7 +85,7 @@ export class Parser {
         if (tok.literal === "(") {
             this.advance();
             const expr = this.parseExpression()!;
-            this.advance();
+            this.expect("Delimiter", ")");
             return expr;
         }
         return undefined;
@@ -110,39 +94,97 @@ export class Parser {
     private parseKeyword(tok: Token): Expression | undefined {
         switch (tok.literal) {
             case "const":
-                // const a := 5 or const b: int = 10
-                const name = this.expectNext("Identifier");
-                let value: Expression | undefined;
-                let typeAnnotation: Identifier | undefined;
-
-                if (this.peek()?.literal === ":=") {
-                    this.advance();
-                    value = this.parseExpression();
+                return this.parseConstDeclaration(tok);
+            case "fn":
+                return this.parseFunctionDeclaration(tok);
+            case "return":
+                this.advance();
+                const returnValue = this.parseExpression();
+                if (returnValue) {
+                    return {
+                        type: "ReturnExpression",
+                        value: returnValue
+                    } as ReturnExpression;
                 }
-
-                if (this.peek()?.literal === ":") {
-                    typeAnnotation = {
-                        type: "Identifier",
-                        name: this.expectNext("Identifier").literal
-                    }
-
-                    if (this.expect("Operator", "=")) {
-                        value = this.parseExpression();
-                    }
-                }         
-
-                return {
-                    type: "ConstDeclaration",
-                    name: {
-                        type: "Identifier",
-                        name: name.literal,
-                    } as Identifier,
-                    value: value,
-                    typeAnnotation: typeAnnotation
-                } as ConstDeclaration
                 break;
-            default:
-                return undefined;
+        }
+
+        return undefined;
+    }
+
+    private parseConstDeclaration(tok: Token): ConstDeclaration {
+        // const a := 5 or const b: int = 10
+        const name = this.expectNext("Identifier");
+        let value: Expression | undefined;
+        let typeAnnotation: Identifier | undefined;
+
+        if (this.peek()?.literal === ":=") {
+            this.advance();
+            value = this.parseExpression();
+        }
+
+        if (this.peek()?.literal === ":") {
+            typeAnnotation = {
+                type: "Identifier",
+                name: this.expectNext("Identifier").literal
+            }
+
+            if (this.expect("Operator", "=")) {
+                value = this.parseExpression();
+            }
+        }         
+
+        return {
+            type: "ConstDeclaration",
+            name: {
+                type: "Identifier",
+                name: name.literal,
+            } as Identifier,
+            value: value,
+            typeAnnotation: typeAnnotation
+        } as ConstDeclaration
+    }
+
+    private parseFunctionDeclaration(tok: Token): FunctionDeclaration | undefined {
+        // fn main() -> int { ... }
+        this.advance();
+        const name = this.expect("Identifier");
+        
+        // todo: params
+        if (this.expect("Delimiter", "(")) {
+            while (this.peek()?.type !== "Delimiter" || this.peek()?.literal !== ")") {
+                this.advance();
+            }
+            this.expect("Delimiter", ")");
+        }
+        this.expect("Operator", "->");
+        
+        const returnType = this.expect("Identifier");
+
+        if (this.expect("Delimiter", "{")) {
+            const body: Expression[] = [];
+            while (this.peek()?.type !== "Delimiter" || this.peek()?.literal !== "}") {
+                const expr = this.parseExpression();
+                if (expr) {
+                    body.push(expr);
+                } else {
+                    this.advance();
+                }
+            }
+            this.expect("Delimiter", "}");
+            return {
+                type: "FunctionDeclaration",
+                name: {
+                    type: "Identifier",
+                    name: name.literal
+                } as Identifier,
+                parameters: [],
+                returnType: {
+                    type: "Identifier",
+                    name: returnType.literal
+                } as Identifier,
+                body
+            }
         }
     }
 
