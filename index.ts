@@ -3,7 +3,13 @@ import { writeFileSync } from "fs";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 const program = `
-    3 + 4 * 5 - 6 / 2
+    const a := 5
+    const b: int = 10
+
+    fn main() -> int {
+        const x := 3
+        return x + a + b
+    }
 `
 
 const l = new Lexer(program)

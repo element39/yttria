@@ -1,6 +1,8 @@
 export type ExpressionType =
     | "Program"
-
+    
+    | "ConstDeclaration"
+    
     | "BinaryExpression"
 
     | "NumberLiteral"
@@ -15,6 +17,13 @@ export type Expression = {
 export type ProgramExpression = Expression & {
     type: "Program";
     body: Expression[];
+};
+
+export type ConstDeclaration = Expression & {
+    type: "ConstDeclaration";
+    name: Identifier;
+    value: Expression;
+    typeAnnotation?: Identifier;
 };
 
 export type BinaryExpression = Expression & {

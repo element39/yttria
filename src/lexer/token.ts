@@ -19,4 +19,5 @@ export type Token = {
 export const KEYWORDS: Record<string, TokenType> = {
     fn: "Keyword",
     return: "Keyword",
+    const: "Keyword",
 };
