@@ -1,213 +1,245 @@
 import llvm from "llvm-bindings";
-import { BinaryExpression, ConstDeclaration, Expression, FunctionDeclaration, NumberLiteral, ReturnExpression } from "../../parser/ast";
+import {
+    BinaryExpression,
+    ConstDeclaration,
+    Expression,
+    FunctionDeclaration,
+    Identifier,
+    NumberLiteral,
+    ReturnExpression,
+} from "../../parser/ast";
 import { Codegen } from "../codegen";
 
 export class LLVMGen extends Codegen {
-    private helper = new LLVMHelper();
-    private variables: {
-        [name: string]: {
-            type: llvm.Type;
-            value: llvm.Value;
-        }
-    } = {};
+  private helper = new LLVMHelper();
+  private variables: Record<string, { type: llvm.Type; value: llvm.Value }> = {};
+  private inFunction = false;
 
-    public generate(): string {
-        for (const expr of this.ast.body) {
-            this.genExpression(expr);
-        }
-
-        // verify
-        if (llvm.verifyModule(this.helper.module)) {
-            throw new Error("LLVM module verification failed");
-        }
-
-        return this.helper.print();
+  public generate(): string {
+    for (const expr of this.ast.body) {
+      this.genExpression(expr);
     }
 
-    private genExpression(expr: Expression): llvm.Value | llvm.Function | undefined {
-        switch (expr.type) {
-            case "ConstDeclaration":
-                return this.genConstDeclaration(expr as ConstDeclaration);
-            case "FunctionDeclaration":
-                return this.genFunctionDeclaration(expr as FunctionDeclaration);
-            case "ReturnExpression":
-                return this.genReturnExpression(expr as ReturnExpression);
-            case "BinaryExpression": 
-                return this.genBinaryExpression(expr as BinaryExpression);
-            case "NumberLiteral":
-                return this.genNumberLiteral(expr as NumberLiteral);
+    if (llvm.verifyModule(this.helper.module)) {
+      throw new Error("LLVM module verification failed");
+    }
+
+    return this.helper.print();
+  }
+
+  private genExpression(expr: Expression): llvm.Value | llvm.Function | void {
+    switch (expr.type) {
+      case "ConstDeclaration":
+        return this.genConstDeclaration(expr as ConstDeclaration);
+      case "FunctionDeclaration":
+        return this.genFunctionDeclaration(expr as FunctionDeclaration);
+      case "ReturnExpression":
+        return this.genReturnExpression(expr as ReturnExpression);
+      case "BinaryExpression":
+        return this.genBinaryExpression(expr as BinaryExpression);
+      case "NumberLiteral":
+        return this.genNumberLiteral(expr as NumberLiteral);
+      case "Identifier":
+        return this.genIdentifier(expr as Identifier);
+    }
+  }
+
+  private genFunctionDeclaration(decl: FunctionDeclaration): llvm.Function {
+    const name = decl.name.name;
+    const returnTy = this.helper.type(
+      decl.returnType?.inferredType || decl.returnType?.name || "void"
+    );
+
+    this.inFunction = true;
+    const [fn] = this.helper.fn(
+      name,
+      [],
+      returnTy,
+      () => {
+        for (const expr of decl.body) {
+          this.genExpression(expr);
+          if (expr.type === "ReturnExpression") return;
         }
-
-        return undefined;
-    }
-
-    private genFunctionDeclaration(decl: FunctionDeclaration): llvm.Function {
-        const name = decl.name.name;
-        const returnTy = this.helper.type(decl.returnType?.inferredType || decl.returnType?.name || "void");
-        const [fn, fnType, entry]: [llvm.Function, llvm.FunctionType, llvm.BasicBlock] = this.helper.fn(name, [], returnTy, () => {
-            for (const expr of decl.body) {
-                this.genExpression(expr);
-                if (expr.type === "ReturnExpression") {
-                    return;
-                }
-            }
-            if (returnTy.isVoidTy()) {
-                this.helper.ret();
-            } else {
-                throw new Error(`Function ${name} must return a value of type ${this.helper.typeName(returnTy)}`);
-            }
-        });
-        return fn;
-    }
-
-    private genReturnExpression(expr: ReturnExpression): llvm.Value | undefined {
-        const value = this.genExpression(expr.value);
-        this.helper.ret(value);
-        return value;
-    }
-
-    private genConstDeclaration(decl: ConstDeclaration) {
-        const name = decl.name.name;
-        const constTy = this.helper.type(decl.inferredType || decl.typeAnnotation?.name || "");
-        const value = this.genExpression(decl.value);
-        if (!value) throw new Error(`Value for constant ${name} is undefined`);
-
-        const alloca = this.helper.alloca(constTy, name);
-        this.helper.store(alloca, value);
-        this.variables[name] = {
-            type: constTy,
-            value: alloca
-        };
-
-        return alloca;
-    }
-
-    private genBinaryExpression(expr: BinaryExpression): llvm.Value {
-        const left = this.genExpression(expr.left);
-        const right = this.genExpression(expr.right);
-
-        if (!left || !right) {
-            throw new Error(`Invalid binary expression: ${expr.left} ${expr.operator} ${expr.right}`);
-        }
-
-        switch (expr.operator) {
-            case "+":
-                return this.helper.add(left, right);
-            case "-":
-                return this.helper.sub(left, right);
-            case "*":
-                return this.helper.mul(left, right);
-            case "/":
-                return this.helper.div(left, right);
-            default:
-                throw new Error(`Unsupported operator: ${expr.operator}`);
-        }
-    }
-
-    private genNumberLiteral(literal: NumberLiteral): llvm.Value {
-        const value = literal.value;
-        const type = this.helper.type(literal.inferredType || "int");
-        
-        if (type.getTypeID() === llvm.Type.TypeID.IntegerTyID) {
-            return llvm.ConstantInt.get(type, value, true);
-        } else if (type.isFloatingPointTy()) {
-            return llvm.ConstantFP.get(type, value);
+        if (returnTy.isVoidTy()) {
+          this.helper.ret();
         } else {
-            throw new Error(`Unsupported type for number literal: ${literal.inferredType}`);
+          throw new Error(
+            `Function ${name} must return ${this.helper.typeName(returnTy)}`
+          );
         }
+      }
+    );
+    this.inFunction = false;
+
+    return fn;
+  }
+
+  private genReturnExpression(expr: ReturnExpression): llvm.Value {
+    const value = this.genExpression(expr.value) as llvm.Value;
+    this.helper.ret(value);
+    return value;
+  }
+
+  private genIdentifier(expr: Identifier): llvm.Value {
+    const entry = this.variables[expr.name];
+    if (!entry) {
+      throw new Error(`Undefined variable: ${expr.name}`);
     }
+    return this.helper.load(entry.type, entry.value, expr.name);
+  }
+
+  private genConstDeclaration(decl: ConstDeclaration): llvm.Value {
+    const name = decl.name.name;
+    const constTy = this.helper.type(
+      decl.inferredType || decl.typeAnnotation?.name || ""
+    );
+    const init = this.genExpression(decl.value) as llvm.Value;
+    if (!init) {
+      throw new Error(`Value for constant ${name} is undefined`);
+    }
+
+    if (!this.inFunction) {
+      const gv = new llvm.GlobalVariable(
+        this.helper.module,
+        constTy,
+        true, /* isConstant */
+        llvm.GlobalValue.LinkageTypes.ExternalLinkage,
+        init as llvm.Constant,
+        name
+      );
+      this.variables[name] = { type: constTy, value: gv };
+      return gv;
+    }
+
+    const slot = this.helper.alloca(constTy, name);
+    this.helper.store(slot, init);
+    this.variables[name] = { type: constTy, value: slot };
+    return slot;
+  }
+
+  private genBinaryExpression(expr: BinaryExpression): llvm.Value {
+    const l = this.genExpression(expr.left) as llvm.Value;
+    const r = this.genExpression(expr.right) as llvm.Value;
+    if (!l || !r) {
+      throw new Error(`Invalid binary expression`);
+    }
+    switch (expr.operator) {
+      case "+":
+        return this.helper.add(l, r);
+      case "-":
+        return this.helper.sub(l, r);
+      case "*":
+        return this.helper.mul(l, r);
+      case "/":
+        return this.helper.div(l, r);
+      default:
+        throw new Error(`Unsupported operator: ${expr.operator}`);
+    }
+  }
+
+  private genNumberLiteral(lit: NumberLiteral): llvm.Value {
+    const ty = this.helper.type(lit.inferredType || "int");
+    if (ty.getTypeID() === llvm.Type.TypeID.IntegerTyID) {
+      return llvm.ConstantInt.get(ty, lit.value, true);
+    } else if (ty.isFloatingPointTy()) {
+      return llvm.ConstantFP.get(ty, lit.value);
+    }
+    throw new Error(`Unsupported literal type: ${lit.inferredType}`);
+  }
 }
 
 export class LLVMHelper {
-    public context = new llvm.LLVMContext();
-    public module = new llvm.Module("main", this.context);
-    public builder = new llvm.IRBuilder(this.context);
+  public context = new llvm.LLVMContext();
+  public module = new llvm.Module("main", this.context);
+  public builder = new llvm.IRBuilder(this.context);
 
-    private types = {
-        int: llvm.Type.getInt32Ty(this.context),
-        i32: llvm.Type.getInt32Ty(this.context),
-        i64: llvm.Type.getInt64Ty(this.context),
+  private types = {
+    int: llvm.Type.getInt32Ty(this.context),
+    i32: llvm.Type.getInt32Ty(this.context),
+    i64: llvm.Type.getInt64Ty(this.context),
+    float: llvm.Type.getFloatTy(this.context),
+    f32: llvm.Type.getFloatTy(this.context),
+    f64: llvm.Type.getDoubleTy(this.context),
+    void: llvm.Type.getVoidTy(this.context),
+  };
 
-        float: llvm.Type.getFloatTy(this.context),
-        f32: llvm.Type.getFloatTy(this.context),
-        f64: llvm.Type.getDoubleTy(this.context),
+  type(name: string): llvm.Type {
+    const t = (this.types as any)[name];
+    if (!t) throw new Error(`Unknown type: ${name}`);
+    return t;
+  }
 
-        void: llvm.Type.getVoidTy(this.context),
+  typeName(t: llvm.Type): string {
+    switch (t.getTypeID()) {
+      case llvm.Type.TypeID.IntegerTyID:
+        return "int";
+      case llvm.Type.TypeID.FloatTyID:
+        return "float";
+      case llvm.Type.TypeID.DoubleTyID:
+        return "double";
+      case llvm.Type.TypeID.VoidTyID:
+        return "void";
+      case llvm.Type.TypeID.FunctionTyID:
+        return "function";
+      case llvm.Type.TypeID.PointerTyID:
+        return `pointer to ${this.typeName(t.getPointerElementType())}`;
+      default:
+        throw new Error(`Unknown LLVM type ID: ${t.getTypeID()}`);
     }
+  }
 
-    type(ty: string): llvm.Type {
-        if (ty in this.types) {
-            return this.types[ty as keyof typeof this.types];
-        } else {
-            throw new Error(`Unknown type: ${ty}`);
-        }
-    }
+  fn(
+    name: string,
+    params: llvm.Type[],
+    ret: llvm.Type,
+    body: () => void
+  ): [llvm.Function, llvm.FunctionType, llvm.BasicBlock] {
+    const fty = llvm.FunctionType.get(ret, params, false);
+    const fn = llvm.Function.Create(
+      fty,
+      llvm.Function.LinkageTypes.ExternalLinkage,
+      name,
+      this.module
+    );
+    const entry = llvm.BasicBlock.Create(this.context, "entry", fn);
+    this.builder.SetInsertPoint(entry);
+    body();
+    return [fn, fty, entry];
+  }
 
-    typeName(ty: llvm.Type): string {
-        switch (ty.getTypeID()) {
-            case llvm.Type.TypeID.IntegerTyID:
-                return "int";
-            case llvm.Type.TypeID.FloatTyID:
-                return "float";
-            case llvm.Type.TypeID.DoubleTyID:
-                return "double";
-            case llvm.Type.TypeID.VoidTyID:
-                return "void";
-            case llvm.Type.TypeID.FunctionTyID:
-                return "function";
-            case llvm.Type.TypeID.PointerTyID:
-                return `pointer to ${this.typeName(ty.getPointerElementType())}`;
-            default:
-                throw new Error(`Unknown LLVM type: ${ty.getTypeID()}`);
-        }
-    }
+  alloca(ty: llvm.Type, name?: string): llvm.Value {
+    return this.builder.CreateAlloca(ty, null, name);
+  }
 
-    fn(name: string, paramTypes: llvm.Type[], returnType: llvm.Type, body: () => any): [llvm.Function, llvm.FunctionType, llvm.BasicBlock] {
-        const fnType = llvm.FunctionType.get(returnType, paramTypes, false);
-        const fn = llvm.Function.Create(fnType, llvm.Function.LinkageTypes.ExternalLinkage, name, this.module);
-        const entry = llvm.BasicBlock.Create(this.context, "entry", fn);
+  store(ptr: llvm.Value, val: llvm.Value): llvm.Value {
+    return this.builder.CreateStore(val, ptr);
+  }
 
-        this.builder.SetInsertPoint(entry);
-        body();
+  load(ty: llvm.Type, ptr: llvm.Value, name?: string): llvm.Value {
+    return this.builder.CreateLoad(ty, ptr, name);
+  }
 
-        return [fn, fnType, entry];
-    }
+  add(a: llvm.Value, b: llvm.Value, name?: string): llvm.Value {
+    return this.builder.CreateAdd(a, b, name || "addtmp");
+  }
 
-    alloca(type: llvm.Type, name?: string) {
-        const alloca = this.builder.CreateAlloca(type, null, name);
-        return alloca;
-    }
+  sub(a: llvm.Value, b: llvm.Value, name?: string): llvm.Value {
+    return this.builder.CreateSub(a, b, name || "subtmp");
+  }
 
-    store(ptr: llvm.Value, value: llvm.Value) {
-        return this.builder.CreateStore(value, ptr);
-    }
+  mul(a: llvm.Value, b: llvm.Value, name?: string): llvm.Value {
+    return this.builder.CreateMul(a, b, name || "multmp");
+  }
 
-    load(type: llvm.Type, ptr: llvm.Value, name?: string) {
-        return this.builder.CreateLoad(type, ptr, name);
-    }
+  div(a: llvm.Value, b: llvm.Value, name?: string): llvm.Value {
+    return this.builder.CreateSDiv(a, b, name || "divtmp");
+  }
 
-    add(a: llvm.Value, b: llvm.Value, name?: string) {
-        return this.builder.CreateAdd(a, b, name || "addtmp");
-    }
+  ret(val?: llvm.Value): llvm.Value {
+    return val ? this.builder.CreateRet(val) : this.builder.CreateRetVoid();
+  }
 
-    sub(a: llvm.Value, b: llvm.Value, name?: string) {
-        return this.builder.CreateSub(a, b, name || "subtmp");
-    }
-
-    mul(a: llvm.Value, b: llvm.Value, name?: string) {
-        return this.builder.CreateMul(a, b, name || "multmp");
-    }
-
-    div(a: llvm.Value, b: llvm.Value, name?: string) {
-        return this.builder.CreateSDiv(a, b, name || "divtmp");
-    }
-
-    ret(val?: llvm.Value) {
-        if (val) return this.builder.CreateRet(val);
-        return this.builder.CreateRetVoid();
-    }
-
-    print() {
-        return this.module.print();
-    }
+  print(): string {
+    return this.module.print();
+  }
 }

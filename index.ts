@@ -4,21 +4,15 @@ import { TypeChecker } from "./src/checker/checker";
 import { LLVMGen } from "./src/codegen/llvm/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
-// const program = `
-//     const a := 5
-//     const b: int = 10
-
-//     fn main() -> int {
-//         const x := 3
-//         return x + a + b
-//     }
-// `
-
 const program = `
+    const a := 5
+    const b: int = 2
+
     fn main() -> int {
-        return (1 + 2 * 3 - 4 / 2) * 10
+        const x := 3
+        return x * (a + b)
     }
-`;
+`
 
 const l = new Lexer(program)
 const t = l.lex()
@@ -28,7 +22,6 @@ const ast = p.parse();
 
 const c = new TypeChecker(ast);
 const typed = c.check();
-writeFileSync("ast.json", JSON.stringify(typed, null, 2));
 
 const g = new LLVMGen(typed);
 const ll = g.generate();
@@ -41,9 +34,9 @@ if (llc.exitCode !== 0) {
     process.exit(1);
 }
 
-const ggc = Bun.spawnSync(["gcc", "out.s", "-o", "out", "-lm"]);
-if (ggc.exitCode !== 0) {
-    console.error("GCC compilation failed:", new TextDecoder().decode(ggc.stderr));
+const gcc = Bun.spawnSync(["gcc", "out.s", "-o", "out", "-lm"]);
+if (gcc.exitCode !== 0) {
+    console.error("GCC compilation failed:", new TextDecoder().decode(gcc.stderr));
     process.exit(1);
 }
 
