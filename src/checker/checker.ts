@@ -53,7 +53,7 @@ export class TypeChecker {
         if (expr.typeAnnotation) {
             const annotatedType = expr.typeAnnotation.name;
             if (valueType && valueType !== annotatedType) {
-                throw new Error(`Type mismatch in const declaration '${name}': expected ${annotatedType}, got ${valueType}`);
+                throw new Error(`Type mismatch in const declaration "${name}": expected ${annotatedType}, got ${valueType}`);
             }
             valueType = annotatedType;
         }
@@ -100,7 +100,7 @@ export class TypeChecker {
         
         // todo: support more types
         if (leftType !== "int") {
-            throw new Error(`Operator '${expr.operator}' not supported for type '${leftType}'`);
+            throw new Error(`Operator "${expr.operator}" not supported for type "${leftType}"`);
         }
         expr.inferredType = leftType;
         return leftType;

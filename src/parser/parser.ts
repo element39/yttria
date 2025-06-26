@@ -195,7 +195,7 @@ export class Parser {
         }
 
         if (literal && tok.literal !== literal) {
-            throw new Error(`Expected token with literal '${literal}', but got '${tok.literal}'`);
+            throw new Error(`Expected token with literal "${literal}", but got "${tok.literal}"`);
         }
 
         this.advance();
@@ -210,7 +210,7 @@ export class Parser {
         }
 
         if (literal && tok.literal !== literal) {
-            throw new Error(`Expected token with literal '${literal}', but got '${tok.literal}'`);
+            throw new Error(`Expected token with literal "${literal}", but got "${tok.literal}"`);
         }
 
         this.advance();

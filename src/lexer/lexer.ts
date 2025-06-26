@@ -43,8 +43,8 @@ export class Lexer {
                 let literal = char;
                 let isDecimal = false;
 
-                while (this.pos < this.src.length && (/\d/.test(this.src[this.pos]) || (!isDecimal && this.src[this.pos] === '.'))) {
-                    if (this.src[this.pos] === '.') {
+                while (this.pos < this.src.length && (/\d/.test(this.src[this.pos]) || (!isDecimal && this.src[this.pos] === "."))) {
+                    if (this.src[this.pos] === ".") {
                         isDecimal = true;
                     }
                     literal += this.advance();
@@ -59,7 +59,7 @@ export class Lexer {
             }
 
             // operators
-            if (char === '-' && this.src[this.pos] === '>') {
+            if (char === "-" && this.src[this.pos] === ">") {
                 this.advance();
                 this.tokens.push({
                     type: "Operator",
@@ -82,7 +82,7 @@ export class Lexer {
             }
 
             // delimiters
-            if (char === ':' && this.src[this.pos] === '=') {
+            if (char === ":" && this.src[this.pos] === "=") {
                 this.advance();
                 this.tokens.push({
                     type: "Operator",
@@ -91,7 +91,7 @@ export class Lexer {
                 continue;
             }
 
-            if (`.,;:(){}[]"'\``.includes(char)) {
+            if (`.,;:(){}[]""\``.includes(char)) {
                 this.tokens.push({
                     type: "Delimiter",
                     literal: char
@@ -99,7 +99,7 @@ export class Lexer {
                 continue;
             }
 
-            if (char !== '') {
+            if (char !== "") {
                 this.tokens.push({
                     type: "Unknown",
                     literal: char
@@ -109,14 +109,14 @@ export class Lexer {
 
         this.tokens.push({
             type: "EOF",
-            literal: ''
+            literal: ""
         });
 
         return this.tokens;
     }
 
     private advance(): string {
-        if (this.pos >= this.src.length) return '';
+        if (this.pos >= this.src.length) return "";
         const char = this.src[this.pos];
         this.pos++;
         return char;
@@ -125,7 +125,7 @@ export class Lexer {
     private skipWhitespace(): void {
         while (
             this.pos < this.src.length &&
-            (this.src[this.pos] === ' ' || this.src[this.pos] === '\t' || this.src[this.pos] === '\r')
+            (this.src[this.pos] === " " || this.src[this.pos] === "\t" || this.src[this.pos] === "\r")
         ) {
             this.pos++;
         }
