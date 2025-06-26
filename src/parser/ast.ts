@@ -12,7 +12,7 @@ export type ExpressionType =
 
 export type Expression = {
     type: ExpressionType;
-    // [key: string]: any;
+    inferredType?: string;
 }
 
 export type ProgramExpression = Expression & {

@@ -1,5 +1,6 @@
 // import { writeFileSync } from "fs";
 import { writeFileSync } from "fs";
+import { TypeChecker } from "./src/checker/checker";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 const program = `
@@ -16,4 +17,6 @@ const l = new Lexer(program)
 const t = l.lex()
 const p = new Parser(t);
 const ast = p.parse();
-writeFileSync("ast.json", JSON.stringify(ast, null, 2));
+const c = new TypeChecker(ast);
+const typed = c.check();
+writeFileSync("ast.json", JSON.stringify(typed, null, 2));
