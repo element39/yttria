@@ -1,16 +1,13 @@
-// import { writeFileSync } from "fs";
 import { writeFileSync } from "fs";
 import { TypeChecker } from "./src/checker/checker";
 import { LLVMGen } from "./src/codegen/llvm/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 const program = `
-    const a := 5
-    const b: int = 2
-
+    const radius: int = 5;
+    const pi: float = 3.14159;
     fn main() -> int {
-        const x := 3
-        return x * (a + b)
+        pi * radius * radius;
     }
 `
 
@@ -22,6 +19,7 @@ const ast = p.parse();
 
 const c = new TypeChecker(ast);
 const typed = c.check();
+writeFileSync("ast.json", JSON.stringify(typed, null, 2));
 
 const g = new LLVMGen(typed);
 const ll = g.generate();

@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token";
-import { BinaryExpression, ConstDeclaration, Expression, FunctionDeclaration, Identifier, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast";
+import { AssignmentDeclaration, BinaryExpression, ConstDeclaration, Expression, FloatLiteral, FunctionDeclaration, Identifier, IntegerLiteral, LetDeclaration, ProgramExpression, ReturnExpression } from "./ast";
 
 export class Parser {
     private tokens: Token[];
@@ -27,7 +27,7 @@ export class Parser {
     }
 
     private parseExpression(): Expression | undefined {
-        return this.parseAdditive();
+        return this.parseAssignment();
     }
 
     private parseAdditive(): Expression | undefined {
@@ -67,10 +67,16 @@ export class Parser {
         switch (tok.type) {
             case "Number":
                 this.advance();
+                if (tok.literal.includes('.')) {
+                    return {
+                        type: "FloatLiteral",
+                        value: parseFloat(tok.literal)
+                    } as FloatLiteral;
+                }
                 return {
-                    type: "NumberLiteral",
-                    value: Number(tok.literal)
-                } as NumberLiteral;
+                    type: "IntegerLiteral",
+                    value: parseInt(tok.literal, 10)
+                } as IntegerLiteral;
             case "Identifier":
                 this.advance();
                 return {
@@ -95,6 +101,8 @@ export class Parser {
         switch (tok.literal) {
             case "const":
                 return this.parseConstDeclaration(tok);
+            case "let":
+                return this.parseLetDeclaration(tok);
             case "fn":
                 return this.parseFunctionDeclaration(tok);
             case "return":
@@ -143,6 +151,56 @@ export class Parser {
             value: value,
             typeAnnotation: typeAnnotation
         } as ConstDeclaration
+    }
+
+    private parseLetDeclaration(tok: Token): LetDeclaration {
+        // let a := 5 or let b: int = 10
+        const name = this.expectNext("Identifier");
+        let value: Expression | undefined;
+        let typeAnnotation: Identifier | undefined;
+        if (this.peek()?.literal === ":=") {
+            this.advance();
+            value = this.parseExpression();
+        }
+        if (this.peek()?.literal === ":") {
+            typeAnnotation = {
+                type: "Identifier",
+                name: this.expectNext("Identifier").literal
+            }
+
+            if (this.expect("Operator", "=")) {
+                value = this.parseExpression();
+            }
+        }
+        return {
+            type: "LetDeclaration",
+            name: {
+                type: "Identifier",
+                name: name.literal,
+            } as Identifier,
+            value: value,
+            typeAnnotation: typeAnnotation
+        } as LetDeclaration;
+    }
+
+    private parseAssignment(): Expression | undefined {
+        let left = this.parseAdditive()!;
+        
+        const tok = this.peek();
+        if (tok?.type === "Operator" && tok.literal === "=") {
+            if (left.type !== "Identifier") {
+                throw new Error("Left-hand side of assignment must be an identifier");
+            }
+            this.advance();
+            const right = this.parseAssignment()!;
+            return {
+                type: "AssignmentDeclaration",
+                name: left as Identifier,
+                value: right
+            } as AssignmentDeclaration;
+        }
+
+        return left;
     }
 
     private parseFunctionDeclaration(tok: Token): FunctionDeclaration | undefined {

@@ -2,11 +2,14 @@ export type ExpressionType =
     | "Program"
     
     | "ConstDeclaration"
+    | "LetDeclaration"
+    | "AssignmentDeclaration"
     | "FunctionDeclaration"
     | "ReturnExpression"
     
     | "BinaryExpression"
-    | "NumberLiteral"
+    | "IntegerLiteral"
+    | "FloatLiteral"
     | "Identifier"
 ;
 
@@ -25,6 +28,19 @@ export type ConstDeclaration = Expression & {
     name: Identifier;
     value: Expression;
     typeAnnotation?: Identifier;
+};
+
+export type LetDeclaration = Expression & {
+    type: "LetDeclaration";
+    name: Identifier;
+    value: Expression;
+    typeAnnotation?: Identifier;
+};
+
+export type AssignmentDeclaration = Expression & {
+    type: "AssignmentDeclaration";
+    name: Identifier;
+    value: Expression;
 };
 
 export type FunctionDeclaration = Expression & {
@@ -47,8 +63,13 @@ export type BinaryExpression = Expression & {
     right: Expression;
 };
 
-export type NumberLiteral = Expression & {
-    type: "NumberLiteral";
+export type IntegerLiteral = Expression & {
+    type: "IntegerLiteral";
+    value: number;
+};
+
+export type FloatLiteral = Expression & {
+    type: "FloatLiteral";
     value: number;
 };
 
