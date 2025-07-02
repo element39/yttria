@@ -4,8 +4,10 @@ import { LLVMGen } from "./src/codegen/llvm/llvm";
 import { Lexer } from "./src/lexer/lexer";
 import { Parser } from "./src/parser/parser";
 const program = `
-    const radius: int = 5;
-    const pi: float = 3.14159;
+    fn add(a: int, b: int) -> int {
+        a + b;
+    }
+
     fn main() -> int {
         pi * radius * radius;
     }

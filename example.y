@@ -1,4 +1,4 @@
-[| example.y |]
+// example.y
 
 [|  
     yttria
@@ -12,12 +12,44 @@ use std/io;
 fn main() -> void {
     const a := 1
     const b: int = 2
+    let c := 3
+    let d: float = 4.5
 
-    io.print(`sum: {a + b}`)
+    io.println(`sum: {a + b}`)
 
     try io.write("file.txt", "Hello, World!")
-    catch (e) io.print(`Error writing to file: {e}`)
-    finally io.print("Attempted to write to file.")
+    catch (e) io.println(`Error writing to file: {e}`)
+    finally io.println("Attempted to write to file.")
 
-    io.print("File written successfully.")
+    io.println("File written successfully.")
+
+    const numbers: int[] = [1, 2, 3, 4, 5]
+    for (const num in numbers) {
+        io.println(`Number: {num}`)
+    }
+
+    if (a < b) {
+        io.println("a is less than b")
+    } else if (a > b) {
+        io.println("a is greater than b")
+    } else {
+        io.println("a is equal to b")
+    }
+
+    switch (c) {
+        case 1:
+            io.println("c is 1")
+        case 2:
+            io.println("c is 2")
+        default:
+            io.println("c is something else")
+    }
+
+    for (let i := 0 -> 5) {
+        io.println(i) // 0, 1, 2, 3, 4
+    }
+
+    for (let i := 0 => 5) {
+        io.println(i) // 0, 1, 2, 3, 4, 5
+    }
 }
