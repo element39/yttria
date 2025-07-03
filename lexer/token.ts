@@ -1,6 +1,6 @@
 export type Token = {
-    type: TokenType;
-    literal: string;
+    type: TokenType
+    literal: string
 }
 
 export type TokenType =

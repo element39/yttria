@@ -19,8 +19,8 @@ export class Lexer {
                 this.tokens.push({
                     type: "EOL",
                     literal: char
-                });
-                continue;
+                })
+                continue
             }
 
             // numbers
@@ -53,7 +53,7 @@ export class Lexer {
             }
 
             // multi-char operators
-            const two = char + this.peek();
+            const two = char + this.peek()
             if ([
                 "==", "!=", "<=", ">=", "->", "=>", "&&", "||", "++", "--", "+=", "-=", "*=", "/="
             ].includes(two)) {
@@ -61,7 +61,7 @@ export class Lexer {
                     type: "Operator",
                     literal: two
                 })
-                this.advance();
+                this.advance()
                 continue
             }
 
@@ -94,7 +94,7 @@ export class Lexer {
         this.tokens.push({
             type: "EOF",
             literal: ""
-        });
+        })
 
         return this.tokens
     }
