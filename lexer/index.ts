@@ -23,6 +23,76 @@ export class Lexer {
                 continue
             }
 
+            // comments
+            // // ...
+            if (char == "/" && this.peek() == "/") {
+                let literal = ""
+                this.advance()
+                while (this.pos < this.src.length && this.src[this.pos] !== "\n") {
+                    literal += this.advance()
+                }
+                this.tokens.push({
+                    type: "Comment",
+                    literal
+                })
+                continue
+            }
+
+            // # ...
+            if (char == "#") {
+                let literal = ""
+                while (this.pos < this.src.length && this.src[this.pos] !== "\n") {
+                    literal += this.advance()
+                }
+                this.tokens.push({
+                    type: "Comment",
+                    literal: literal.trim()
+                })
+                continue
+            }
+
+            // /* ... */
+            if (char === "/" && this.peek() === "*") {
+                let literal = ""
+                this.advance()
+
+                while (this.pos < this.src.length && !(this.peek() === "*" && this.peek(1) === "/")) {
+                    literal += this.advance()
+                }
+
+                if (this.peek() === "*" && this.peek(1) === "/") {
+                    this.advance()
+                    this.advance()
+                }
+
+                this.tokens.push({
+                    type: "Comment",
+                    literal: literal.trim()
+                })
+                continue
+            }
+
+            // [| ... |]
+            if (char === "[" && this.peek() === "|") {
+                let literal = ""
+                this.advance()
+
+                while (this.pos < this.src.length && !(this.peek() === "|" && this.peek(1) === "]")) {
+                    literal += this.advance()
+                }
+
+                if (this.peek() === "|" && this.peek(1) === "]") {
+                    this.advance()
+                    this.advance()
+                }
+
+                this.tokens.push({
+                    type: "Comment",
+                    literal: literal.trim()
+                })
+                continue
+            }
+
             // numbers
             if (char >= "0" && char <= "9") {
                 let literal = char
@@ -161,9 +231,9 @@ export class Lexer {
         return char
     }
 
-    private peek(): string {
+    private peek(n = 0): string {
         if (this.pos >= this.src.length) return ""
-        return this.src[this.pos]
+        return this.src[this.pos + n]
     }
 
     private skipWhitespace(): void {

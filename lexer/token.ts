@@ -8,6 +8,8 @@ export type TokenType =
     | "EOL"
     | "Unknown"
 
+    | "Comment"
+
     | "Identifier"
     | "Keyword"
 

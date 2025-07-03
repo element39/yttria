@@ -12,14 +12,14 @@
 - [x] operators
 - [x] delimiters
 
-- [ ] comments
+- [x] comments
 - [ ] error handling (unknowns)
 
 ## parser
 - [x] number literals
-- [ ] string literals
-- [ ] boolean literals
-- [ ] null literals
+- [x] string literals
+- [x] boolean literals
+- [x] null literals
 
 - [x] identifiers
 
@@ -33,4 +33,5 @@
 - [x] binary expressions
 - [ ] unary expressions
 
+- [x] comments
 - [ ] error handling (syntax)

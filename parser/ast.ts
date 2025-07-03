@@ -19,6 +19,9 @@ export type ExpressionType =
     | "UnaryExpression" // -n
 
     | "NumberLiteral"
+    | "StringLiteral"
+    | "BooleanLiteral"
+    | "NullLiteral"
 
 export type ProgramExpression = Expression & {
     type: "Program"
@@ -64,6 +67,21 @@ export type ReturnExpression = Expression & {
 export type NumberLiteral = Expression & {
     type: "NumberLiteral"
     value: number
+}
+
+export type StringLiteral = Expression & {
+    type: "StringLiteral"
+    value: string
+}
+
+export type BooleanLiteral = Expression & {
+    type: "BooleanLiteral"
+    value: boolean
+}
+
+export type NullLiteral = Expression & {
+    type: "NullLiteral"
+    value: null
 }
 
 export type BinaryExpression = Expression & {

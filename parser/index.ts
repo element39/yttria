@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, UnaryExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -14,6 +14,9 @@ export class Parser {
         Identifier: this.visitIdentifier,
 
         Number: this.visitNumberLiteral,
+        String: this.visitStringLiteral,
+        Boolean: this.visitBooleanLiteral,
+        Null: this.visitNullLiteral,
     }
     
     constructor(tokens: Token[]) {
@@ -225,6 +228,27 @@ export class Parser {
         }
 
         return lit
+    }
+
+    private visitStringLiteral(t: Token): StringLiteral {
+        return {
+            type: "StringLiteral",
+            value: t.literal
+        }
+    }
+
+    private visitBooleanLiteral(t: Token): BooleanLiteral {
+        return {
+            type: "BooleanLiteral",
+            value: t.literal === "true"
+        }
+    }
+
+    private visitNullLiteral(t: Token): NullLiteral {
+        return {
+            type: "NullLiteral",
+            value: null
+        }
     }
 
     private visitIdentifier(t: Token): Identifier | null {

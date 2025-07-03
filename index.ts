@@ -17,7 +17,7 @@ import { Parser } from "./parser"
 // `.trim()
 
 const program = `
-"hi" 'hi' true false null
+true false null "hi" 'hi' 3.5 6
 `.trim()
 
 const t1 = performance.now()
