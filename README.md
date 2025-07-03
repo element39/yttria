@@ -8,6 +8,9 @@
 
 ---
 
+> [!CAUTION]
+> ### yttria is still in extremely early development, so expect breaking changes and limited documentation, some stuff may not even exist yet.
+
 <div style="display: flex; align-items: flex-start; gap: 2em;">
 
   <div style="flex: 1; height: 100%;">
