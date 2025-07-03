@@ -14,7 +14,10 @@ export type TokenType =
     | "Operator"
     | "Delimiter"
 
+    | "Null"
     | "Number"
+    | "String"
+    | "Boolean"
 
 export const Keywords = [
     "fn",

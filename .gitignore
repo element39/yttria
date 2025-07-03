@@ -4,3 +4,4 @@ out.exe
 out.ll
 out.s
 ast.json
+tok.json

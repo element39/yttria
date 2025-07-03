@@ -7,9 +7,9 @@
 - [ ] unary expressions
 - [x] number literals
 - [x] identifiers
-- [ ] string literals
-- [ ] boolean literals
-- [ ] null literals
+- [x] string literals
+- [x] boolean literals
+- [x] null literals
 - [ ] comments
 - [ ] whitespace
 - [ ] error handling

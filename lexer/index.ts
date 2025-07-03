@@ -74,6 +74,41 @@ export class Lexer {
                 continue
             }
 
+            // strings
+            if (char === '"') {
+                let literal = ""
+                while (this.pos < this.src.length && this.src[this.pos] !== '"') {
+                    literal += this.advance()
+                }
+
+                if (this.peek() === '"') {
+                    this.advance()
+                }
+
+                this.tokens.push({
+                    type: "String",
+                    literal
+                })
+                continue
+            }
+
+            if (char === "'") {
+                let literal = ""
+                while (this.pos < this.src.length && this.src[this.pos] !== "'") {
+                    literal += this.advance()
+                }
+
+                if (this.peek() === "'") {
+                    this.advance()
+                }
+
+                this.tokens.push({
+                    type: "String",
+                    literal
+                })
+                continue
+            }
+
             // identifiers / keywords
             if (
                 (char >= "a" && char <= "z") ||
@@ -84,6 +119,22 @@ export class Lexer {
 
                 while (this.pos < this.src.length && /[a-zA-Z0-9_]/.test(this.src[this.pos])) {
                     literal += this.advance()
+                }
+
+                if (literal === "true" || literal === "false") {
+                    this.tokens.push({
+                        type: "Boolean",
+                        literal
+                    })
+                    continue
+                }
+
+                if (literal === "null") {
+                    this.tokens.push({
+                        type: "Null",
+                        literal
+                    })
+                    continue
                 }
 
                 this.tokens.push({
