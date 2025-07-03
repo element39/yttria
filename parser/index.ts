@@ -37,7 +37,7 @@ export class Parser {
         this.pos = 0
         while (this.pos < this.tokens.length) {
             const tok = this.peek()
-            const expr = this.parseExpression(undefined, tok)
+            const expr = this.parseExpression(0, tok)
             if (expr) {
                 this.program.body.push(expr)
             }
