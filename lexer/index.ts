@@ -24,7 +24,7 @@ export class Lexer {
             }
 
             // numbers
-            if (/\d/.test(char)) {
+            if (char >= "0" && char <= "9") {
                 let literal = char
                 let isDecimal = false
 
@@ -75,7 +75,11 @@ export class Lexer {
             }
 
             // identifiers / keywords
-            if (/[a-zA-Z_]/.test(char)) {
+            if (
+                (char >= "a" && char <= "z") ||
+                (char >= "A" && char <= "Z") ||
+                char === "_"
+            ) {
                 let literal = char
 
                 while (this.pos < this.src.length && /[a-zA-Z0-9_]/.test(this.src[this.pos])) {

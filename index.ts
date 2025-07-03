@@ -22,10 +22,14 @@ fn main() -> int {
 }
 `.trim()
 
+const t1 = performance.now()
+
 const l = new Lexer(program)
 const t = l.lex()
 const p = new Parser(t)
 const ast = p.parse()
 
+const t2 = performance.now()
+
 writeFileSync("ast.json", JSON.stringify(ast, null, 2))
-console.log(JSON.stringify(ast, null, 2))
+console.log(`parsed ${t.length} tokens in ${(t2 - t1).toFixed(3)}ms`)
