@@ -9,6 +9,8 @@ export type ExpressionType =
     | "Identifier"
 
     | "FunctionDeclaration"
+    | "FunctionParam"
+    | "ReturnExpression"
 
 export type ProgramExpression = Expression & {
     type: "Program"
@@ -29,6 +31,12 @@ export type FunctionDeclaration = Expression & {
 }
 
 export type FunctionParam = {
+    type: "FunctionParam"
     name: Identifier
-    type: Identifier
+    paramType: Identifier
+}
+
+export type ReturnExpression = Expression & {
+    type: "ReturnExpression"
+    value: Expression | null
 }

@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { Expression, FunctionDeclaration, FunctionParam, Identifier, ProgramExpression } from "./ast"
+import { Expression, FunctionDeclaration, FunctionParam, Identifier, ProgramExpression, ReturnExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -40,6 +40,8 @@ export class Parser {
         switch (t.literal) {
             case "fn":
                 return this.parseFunctionDeclaration(t)
+            case "return":
+                return this.parseReturnExpression(t)
             default:
                 return null
         }
@@ -72,13 +74,13 @@ export class Parser {
             }
             this.advance()
 
-            const type: Identifier = {
+            const paramType: Identifier = {
                 type: "Identifier",
                 value: this.peek().literal
             }
             this.advance()
 
-            params.push({ name, type })
+            params.push({ type: "FunctionParam", name, paramType })
 
             if (this.peek().literal === ",") {
                 this.advance()
@@ -99,8 +101,17 @@ export class Parser {
         if (this.peek().literal === "{") {
             this.advance()
         }
-
+        
+        const body: Expression[] = []
         while (this.peek().literal !== "}") {
+            const handler = this.table[this.peek().type]
+            if (handler) {
+                const expr = handler.call(this, this.peek())
+                if (expr) {
+                    body.push(expr)
+                }
+            }
+
             this.advance()
         }
 
@@ -109,8 +120,26 @@ export class Parser {
             name,
             params,
             returnType,
-            body: []
+            body
         }
+    }
+
+    private parseReturnExpression(t: Token): ReturnExpression {
+        this.advance()
+        const ret: ReturnExpression = {
+            type: "ReturnExpression",
+            value: null
+        }
+
+        const handler = this.table[this.peek().type]
+        if (handler) {
+            const expr = handler.call(this, this.peek())
+            if (expr) {
+                ret.value = expr
+            }
+        }
+        
+        return ret
     }
 
     private advance(n = 1): Token {
