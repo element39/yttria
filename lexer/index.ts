@@ -1,0 +1,122 @@
+import { Keywords, Token } from "./token"
+
+export class Lexer {
+    tokens: Token[] = []
+    src: string
+    pos: number = 0
+
+    constructor(src: string) {
+        this.src = src
+    }
+
+    public lex(): Token[] {
+        this.pos = 0
+        while (this.pos < this.src.length) {
+            this.skipWhitespace()
+            const char = this.advance()
+
+            if (char === "\n") {
+                this.tokens.push({
+                    type: "EOL",
+                    literal: char
+                });
+                continue;
+            }
+
+            // numbers
+            if (/\d/.test(char)) {
+                let literal = char
+                let isDecimal = false
+
+                while (this.pos < this.src.length && (/\d/.test(this.src[this.pos]) || (!isDecimal && this.src[this.pos] === "."))) {
+                    if (this.src[this.pos] === ".") {
+                        isDecimal = true
+                    }
+                    literal += this.advance()
+                }
+
+                this.tokens.push({
+                    type: "Number",
+                    literal
+                })
+
+                continue
+            }
+
+            // delimiters
+            if (["(", ")", "{", "}", ",", ";", ":"].includes(char)) {
+                this.tokens.push({
+                    type: "Delimiter",
+                    literal: char
+                })
+                continue
+            }
+
+            // multi-char operators
+            const two = char + this.peek();
+            if ([
+                "==", "!=", "<=", ">=", "->", "=>", "&&", "||", "++", "--", "+=", "-=", "*=", "/="
+            ].includes(two)) {
+                this.tokens.push({
+                    type: "Operator",
+                    literal: two
+                })
+                this.advance();
+                continue
+            }
+
+            // single-char operators
+            if (["<", ">", "!", "=", "+", "-", "*", "/", "&", "|"].includes(char)) {
+                this.tokens.push({
+                    type: "Operator",
+                    literal: char
+                })
+                continue
+            }
+
+            // identifiers / keywords
+            if (/[a-zA-Z_]/.test(char)) {
+                let literal = char
+
+                while (this.pos < this.src.length && /[a-zA-Z0-9_]/.test(this.src[this.pos])) {
+                    literal += this.advance()
+                }
+
+                this.tokens.push({
+                    type: (Keywords.includes(literal) ? "Keyword" : "Identifier"),
+                    literal
+                })
+
+                continue
+            }
+        }
+
+        this.tokens.push({
+            type: "EOF",
+            literal: ""
+        });
+
+        return this.tokens
+    }
+
+    private advance(): string {
+        if (this.pos >= this.src.length) return ""
+        const char = this.src[this.pos]
+        this.pos++
+        return char
+    }
+
+    private peek(): string {
+        if (this.pos >= this.src.length) return ""
+        return this.src[this.pos]
+    }
+
+    private skipWhitespace(): void {
+        while (
+            this.pos < this.src.length &&
+            (this.src[this.pos] === " " || this.src[this.pos] === "\t" || this.src[this.pos] === "\r")
+        ) {
+            this.pos++
+        }
+    }
+}
