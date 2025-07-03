@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -8,6 +8,16 @@ export class Parser {
         body: []
     }
     pos: number = 0
+
+    precedences: Record<string, number> = {
+        "=": 1,
+        "||": 2,
+        "&&": 3,
+        "==": 4, "!=": 4,
+        "<": 5, "<=": 5, ">": 5, ">=": 5,
+        "+": 6, "-": 6,
+        "*": 7, "/": 7,
+    }
 
     table: { [key in TokenType]?: (t: Token) => Expression | null } = {
         Keyword: this.visitKeyword,
@@ -27,7 +37,7 @@ export class Parser {
         this.pos = 0
         while (this.pos < this.tokens.length) {
             const tok = this.peek()
-            const expr = this.parseExpression(tok)
+            const expr = this.parseExpression(undefined, tok)
             if (expr) {
                 this.program.body.push(expr)
             }
@@ -38,17 +48,46 @@ export class Parser {
         return this.program
     }
 
-    private parseExpression(t: Token): Expression | null {
+    private parseExpression(precedence = 0, tok?: Token): Expression | null {
+        const t = tok || this.peek()
+
         if (t.type === "EOF") {
             return null
         }
 
+        let left: Expression | null = null
+
         const handler = this.table[t.type]
         if (handler) {
-            return handler.call(this, t)
+            left = handler.call(this, t)
         }
 
-        return null
+        if (!left) {
+            return null
+        }
+
+        while (precedence < this.getPrecedence(this.peek().literal)) {
+            const op = this.peek()
+            this.advance()
+            const right = this.parseExpression(this.getPrecedence(op.literal))
+            
+            if (!right) {
+                break
+            }
+
+            left = {
+                type: "BinaryExpression",
+                left,
+                operator: op.literal,
+                right
+            } as BinaryExpression
+        }
+
+        return left
+    }
+
+    private getPrecedence(op: string): number {
+        return this.precedences[op] || 0
     }
 
     private visitKeyword(t: Token): Expression | null {
@@ -134,7 +173,7 @@ export class Parser {
         let condition: Expression = {} as Expression
         if (this.peek().literal === "(") {
             this.advance()
-            condition = this.parseConditionExpression(this.peek())
+            condition = this.parseExpression(0)!
             if (this.peek().literal === ")") {
                 this.advance()
             }
@@ -171,7 +210,7 @@ export class Parser {
         if (this.peek().literal === "{") {
             this.advance()
             while (this.peek().literal !== "}" && this.peek().type !== "EOF") {
-                const expr = this.parseExpression(this.peek())
+                const expr = this.parseExpression(0)
                 if (expr) body.push(expr)
                 this.advance()
             }
@@ -182,34 +221,11 @@ export class Parser {
         return body
     }
 
-    private parseConditionExpression(t: Token): BinaryExpression | UnaryExpression {
-        // n > 0
-        const left = this.parseExpression(t)
-
-        this.advance()
-        const operator = this.peek().literal
-        
-        this.advance()
-        const right = this.parseExpression(this.peek())
-
-        if (!left || !right) {
-            throw new Error("Invalid condition expression")
-        }
-
-        this.advance()
-        
-        return {
-            type: "BinaryExpression",
-            left,
-            operator,
-            right
-        }
-    }
-
+    // return ...
     private parseReturnExpression(t: Token): ReturnExpression {
         this.advance()
         
-        const value = this.parseExpression(this.peek())
+        const value = this.parseExpression(0)
 
         return {
             type: "ReturnExpression",

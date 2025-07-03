@@ -2,22 +2,18 @@ import { writeFileSync } from "fs"
 import { Lexer } from "./lexer"
 import { Parser } from "./parser"
 
-// const program = `
-// fn fib(n: int) -> int {
-//     if (n <= 1) {
-//         return n
-//     }
-    
-//     return fib(n - 1) + fib(n - 2)
-// }
-
-// fn main() -> int {
-//     return fib(5)
-// }
-// `.trim()
-
 const program = `
-true false null "hi" 'hi' 3.5 6
+fn fib(n: int) -> int {
+    if (n <= 1) {
+        return n
+    }
+    
+    return fib(n - 1) + fib(n - 2)
+}
+
+fn main() -> int {
+    return fib(5)
+}
 `.trim()
 
 const t1 = performance.now()
