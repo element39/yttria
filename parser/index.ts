@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast"
+import { BinaryExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, UnaryExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -179,7 +179,7 @@ export class Parser {
         return body
     }
 
-    private parseConditionExpression(t: Token): BinaryExpression {
+    private parseConditionExpression(t: Token): BinaryExpression | UnaryExpression {
         // n > 0
         const left = this.parseExpression(t)
 
