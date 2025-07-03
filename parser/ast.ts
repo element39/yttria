@@ -12,6 +12,8 @@ export type ExpressionType =
     | "FunctionParam"
     | "ReturnExpression"
 
+    | "NumberLiteral"
+
 export type ProgramExpression = Expression & {
     type: "Program"
     body: Expression[]
@@ -39,4 +41,9 @@ export type FunctionParam = {
 export type ReturnExpression = Expression & {
     type: "ReturnExpression"
     value: Expression | null
+}
+
+export type NumberLiteral = Expression & {
+    type: "NumberLiteral"
+    value: number
 }

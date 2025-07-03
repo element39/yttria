@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { Expression, FunctionDeclaration, FunctionParam, Identifier, ProgramExpression, ReturnExpression } from "./ast"
+import { Expression, FunctionDeclaration, FunctionParam, Identifier, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -11,6 +11,7 @@ export class Parser {
 
     table: { [key in TokenType]?: (t: Token) => Expression | null } = {
         Keyword: this.visitKeyword,
+        Number: this.visitNumberLiteral,
     }
     
     constructor(tokens: Token[]) {
@@ -140,6 +141,19 @@ export class Parser {
         }
         
         return ret
+    }
+
+    private visitNumberLiteral(t: Token): Expression | null {
+        const lit: NumberLiteral = {
+            type: "NumberLiteral",
+            value: parseFloat(t.literal)
+        }
+        
+        if (isNaN(lit.value)) {
+            throw new Error(`Invalid number literal: ${t.literal}`)
+        }
+
+        return lit
     }
 
     private advance(n = 1): Token {
