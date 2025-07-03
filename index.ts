@@ -17,10 +17,14 @@ import { Parser } from "./parser"
 // `.trim()
 
 const program = `
-fn main() -> int {
+if (n > 0) {
+    return n
+} else if (n < 0) {
     return 5
+} else {
+    return 0
 }
-`.trim()
+`
 
 const t1 = performance.now()
 
@@ -32,4 +36,5 @@ const ast = p.parse()
 const t2 = performance.now()
 
 writeFileSync("ast.json", JSON.stringify(ast, null, 2))
+
 console.log(`parsed ${t.length} tokens in ${(t2 - t1).toFixed(3)}ms`)

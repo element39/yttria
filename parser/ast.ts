@@ -11,6 +11,12 @@ export type ExpressionType =
     | "FunctionDeclaration"
     | "FunctionParam"
     | "ReturnExpression"
+    
+    | "IfExpression"
+    | "ElseExpression"
+
+    | "BinaryExpression" // n > 1
+    | "UnaryExpression" // -n
 
     | "NumberLiteral"
 
@@ -38,6 +44,18 @@ export type FunctionParam = {
     paramType: Identifier
 }
 
+export type IfExpression = Expression & {
+    type: "IfExpression"
+    condition: Expression
+    body: Expression[]
+    alternate?: IfExpression | ElseExpression
+}
+
+export type ElseExpression = Expression & {
+    type: "ElseExpression"
+    body: Expression[]
+}
+
 export type ReturnExpression = Expression & {
     type: "ReturnExpression"
     value: Expression | null
@@ -46,4 +64,17 @@ export type ReturnExpression = Expression & {
 export type NumberLiteral = Expression & {
     type: "NumberLiteral"
     value: number
+}
+
+export type BinaryExpression = Expression & {
+    type: "BinaryExpression"
+    left: Expression
+    operator: string
+    right: Expression
+}
+
+export type UnaryExpression = Expression & {
+    type: "UnaryExpression"
+    operator: string
+    operand: Expression
 }

@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { Expression, FunctionDeclaration, FunctionParam, Identifier, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast"
+import { BinaryExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -11,6 +11,8 @@ export class Parser {
 
     table: { [key in TokenType]?: (t: Token) => Expression | null } = {
         Keyword: this.visitKeyword,
+        Identifier: this.visitIdentifier,
+
         Number: this.visitNumberLiteral,
     }
     
@@ -22,13 +24,9 @@ export class Parser {
         this.pos = 0
         while (this.pos < this.tokens.length) {
             const tok = this.peek()
-
-            const handler = this.table[tok.type]
-            if (handler) {
-                const expr = handler.call(this, tok)
-                if (expr) {
-                    this.program.body.push(expr)
-                }
+            const expr = this.parseExpression(tok)
+            if (expr) {
+                this.program.body.push(expr)
             }
 
             this.advance()
@@ -37,10 +35,25 @@ export class Parser {
         return this.program
     }
 
+    private parseExpression(t: Token): Expression | null {
+        if (t.type === "EOF") {
+            return null
+        }
+
+        const handler = this.table[t.type]
+        if (handler) {
+            return handler.call(this, t)
+        }
+
+        return null
+    }
+
     private visitKeyword(t: Token): Expression | null {
         switch (t.literal) {
             case "fn":
                 return this.parseFunctionDeclaration(t)
+            case "if":
+                return this.parseIfExpression(t)
             case "return":
                 return this.parseReturnExpression(t)
             default:
@@ -99,22 +112,8 @@ export class Parser {
             value: this.peek().literal
         }
 
-        if (this.peek().literal === "{") {
-            this.advance()
-        }
-        
-        const body: Expression[] = []
-        while (this.peek().literal !== "}") {
-            const handler = this.table[this.peek().type]
-            if (handler) {
-                const expr = handler.call(this, this.peek())
-                if (expr) {
-                    body.push(expr)
-                }
-            }
-
-            this.advance()
-        }
+        this.advance()
+        const body: Expression[] = this.parseBlock()
 
         return {
             type: "FunctionDeclaration",
@@ -125,25 +124,97 @@ export class Parser {
         }
     }
 
-    private parseReturnExpression(t: Token): ReturnExpression {
+    // if (condition) { ... } else if (condition) { ... } else { ... }
+    private parseIfExpression(t: Token): IfExpression {
         this.advance()
-        const ret: ReturnExpression = {
-            type: "ReturnExpression",
-            value: null
-        }
 
-        const handler = this.table[this.peek().type]
-        if (handler) {
-            const expr = handler.call(this, this.peek())
-            if (expr) {
-                ret.value = expr
+        let condition: Expression = {} as Expression
+        if (this.peek().literal === "(") {
+            this.advance()
+            condition = this.parseConditionExpression(this.peek())
+            if (this.peek().literal === ")") {
+                this.advance()
             }
         }
-        
-        return ret
+
+        const body = this.parseBlock()
+
+        let alternate: IfExpression | ElseExpression | undefined = undefined
+        if (this.peek().literal === "else") {
+            this.advance()
+
+            if (this.peek().literal === "if") {
+                alternate = this.parseIfExpression(this.peek())
+            } else if (this.peek().literal === "{") {
+                const elseBody = this.parseBlock()
+                alternate = {
+                    type: "ElseExpression",
+                    body: elseBody
+                }
+            }
+        }
+
+        return {
+            type: "IfExpression",
+            condition,
+            body,
+            alternate
+        }
+    }
+    
+    // { ... }
+    private parseBlock(): Expression[] {
+        const body: Expression[] = []
+        if (this.peek().literal === "{") {
+            this.advance()
+            while (this.peek().literal !== "}" && this.peek().type !== "EOF") {
+                const expr = this.parseExpression(this.peek())
+                if (expr) body.push(expr)
+                this.advance()
+            }
+            if (this.peek().literal === "}") {
+                this.advance()
+            }
+        }
+        return body
     }
 
-    private visitNumberLiteral(t: Token): Expression | null {
+    private parseConditionExpression(t: Token): BinaryExpression {
+        // n > 0
+        const left = this.parseExpression(t)
+
+        this.advance()
+        const operator = this.peek().literal
+        
+        this.advance()
+        const right = this.parseExpression(this.peek())
+
+        if (!left || !right) {
+            throw new Error("Invalid condition expression")
+        }
+
+        this.advance()
+        
+        return {
+            type: "BinaryExpression",
+            left,
+            operator,
+            right
+        }
+    }
+
+    private parseReturnExpression(t: Token): ReturnExpression {
+        this.advance()
+        
+        const value = this.parseExpression(this.peek())
+
+        return {
+            type: "ReturnExpression",
+            value
+        }
+    }
+
+    private visitNumberLiteral(t: Token): NumberLiteral | null {
         const lit: NumberLiteral = {
             type: "NumberLiteral",
             value: parseFloat(t.literal)
@@ -154,6 +225,13 @@ export class Parser {
         }
 
         return lit
+    }
+
+    private visitIdentifier(t: Token): Identifier | null {
+        return {
+            type: "Identifier",
+            value: t.literal
+        }
     }
 
     private advance(n = 1): Token {

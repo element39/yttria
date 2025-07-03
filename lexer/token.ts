@@ -18,5 +18,7 @@ export type TokenType =
 
 export const Keywords = [
     "fn",
+    "if",
+    "else",
     "return"
 ]
