@@ -15,13 +15,13 @@ export class Lexer {
             this.skipWhitespace()
             const char = this.advance()
 
-            if (char === "\n") {
-                this.tokens.push({
-                    type: "EOL",
-                    literal: char
-                })
-                continue
-            }
+            // if (char === "\n") {
+            //     this.tokens.push({
+            //         type: "EOL",
+            //         literal: char
+            //     })
+            //     continue
+            // }
 
             // comments
             // // ...

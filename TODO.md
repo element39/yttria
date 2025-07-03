@@ -24,14 +24,15 @@
 - [x] identifiers
 
 - [x] functions
+- [] fn calls
 - [x] blocks
 - [x] return expressions
 
-- [x] if statements
-- [x] else statements
+- [] if statements
+- [] else statements
 
-- [x] binary expressions
+- [] binary expressions
 - [ ] unary expressions
 
-- [x] comments
+- [] comments
 - [ ] error handling (syntax)
