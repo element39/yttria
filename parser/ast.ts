@@ -23,6 +23,8 @@ export type ExpressionType =
     | "BooleanLiteral"
     | "NullLiteral"
 
+    | "CommentExpression"
+
 export type ProgramExpression = Expression & {
     type: "Program"
     body: Expression[]
@@ -95,4 +97,9 @@ export type UnaryExpression = Expression & {
     type: "UnaryExpression"
     operator: string
     operand: Expression
+}
+
+export type CommentExpression = Expression & {
+    type: "CommentExpression"
+    value: string
 }

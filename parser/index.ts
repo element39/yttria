@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, Expression, FunctionDeclaration, FunctionParam, Identifier, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -15,6 +15,7 @@ export class Parser {
         Boolean: this.visitBooleanLiteral.bind(this),
         Null: this.visitNullLiteral.bind(this),
 
+        Comment: this.visitComment.bind(this),
         Identifier: this.visitIdentifier.bind(this),
         Keyword: this.visitKeyword.bind(this),
     }
@@ -152,11 +153,20 @@ export class Parser {
         switch (t.literal) {
             case "fn":
                 return this.parseFunctionDeclaration()
+            case "if":
+                return this.parseIfExpression()
             case "return":
                 return this.parseReturnExpression()
         }
 
         return null
+    }
+
+    private visitComment(t: Token): CommentExpression {
+        return {
+            type: "CommentExpression",
+            value: t.literal
+        }
     }
 
     private parseFunctionDeclaration(): FunctionDeclaration {
@@ -225,7 +235,6 @@ export class Parser {
 
     private parseBlock(): Expression[] {
         const body: Expression[] = []
-        
         if (this.peek().literal !== "{") {
             throw new Error("Expected '{' to start function body")
         }
@@ -237,8 +246,9 @@ export class Parser {
             if (expr) {
                 body.push(expr)
             }
-            this.advance()
         }
+
+        this.advance()
 
         return body
     }
@@ -250,6 +260,41 @@ export class Parser {
                 type: "NullLiteral",
                 value: null
             } as NullLiteral
+        }
+    }
+
+    private parseIfExpression(): IfExpression {
+        const condition = this.parseExpression(0, this.advance())
+        if (!condition) {
+            throw new Error("Expected condition after 'if'")
+        }
+        this.advance()
+        const body = this.parseBlock()
+        let alternate: IfExpression | ElseExpression | undefined;
+
+        if (this.peek().literal === "else") {
+            this.advance()
+            if (this.peek().literal === "if") {
+                this.advance()
+                alternate = this.parseIfExpression()
+            } else {
+                alternate = this.parseElseExpression()
+            }
+        }
+
+        return {
+            type: "IfExpression",
+            condition,
+            body,
+            alternate
+        }
+    }
+
+    private parseElseExpression(): ElseExpression {
+        const body = this.parseBlock()
+        return {
+            type: "ElseExpression",
+            body
         }
     }
 

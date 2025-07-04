@@ -28,11 +28,11 @@
 - [x] blocks
 - [x] return expressions
 
-- [ ] if statements
-- [ ] else statements
+- [x] if statements
+- [x] else statements
 
 - [x] binary expressions
 - [x] unary expressions
 
-- [ ] comments
+- [x] comments
 - [ ] error handling (syntax)

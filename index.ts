@@ -17,7 +17,13 @@ import { Parser } from "./parser"
 // `.trim()
 
 const program = `
--5 + x * 2 - 1
+if (3 > 5) {
+    5
+} else if (3 < 5) {
+    "hello"
+} else {
+    null
+}
 `.trim()
 
 const t1 = performance.now()
