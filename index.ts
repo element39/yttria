@@ -17,7 +17,7 @@ import { Parser } from "./parser"
 // `.trim()
 
 const program = `
-(-1 + 5) / 3
+-5 + x * 2 - 1
 `.trim()
 
 const t1 = performance.now()

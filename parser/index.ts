@@ -57,6 +57,7 @@ export class Parser {
     private parseExpression(precedence = 0, tok?: Token): Expression | null {
         let left = this.parsePrimary()
 
+        // x + y / z
         while (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
             const op = this.peek()
             this.advance()
@@ -100,16 +101,19 @@ export class Parser {
             } as UnaryExpression
         }
 
-        // others
         if (t.type in this.table) {
-            return this.table[t.type]!(t)
+            const tok = this.peek()
+            this.advance()
+            return this.table[tok.type]!(tok)
+            
+            // if something breaks replace this clause with
+            // return this.table[t.type](t)
         }
 
         return null
     }
 
     private visitNumberLiteral(t: Token): NumberLiteral {
-        this.advance()
         return {
             type: "NumberLiteral",
             value: parseFloat(t.literal)
@@ -117,7 +121,6 @@ export class Parser {
     }
 
     private visitStringLiteral(t: Token): StringLiteral {
-        this.advance()
         return {
             type: "StringLiteral",
             value: t.literal
@@ -125,7 +128,6 @@ export class Parser {
     }
 
     private visitBooleanLiteral(t: Token): BooleanLiteral {
-        this.advance()
         return {
             type: "BooleanLiteral",
             value: t.literal === "true"
@@ -133,7 +135,6 @@ export class Parser {
     }
 
     private visitNullLiteral(t: Token): NullLiteral {
-        this.advance()
         return {
             type: "NullLiteral",
             value: null
@@ -141,7 +142,6 @@ export class Parser {
     }
 
     private visitIdentifier(t: Token): Identifier {
-        this.advance()
         return {
             type: "Identifier",
             value: t.literal
@@ -255,8 +255,7 @@ export class Parser {
 
     private advance(n = 1): Token {
         this.pos += n
-        const t = this.tokens[this.pos] || { type: "EOF", literal: "" }
-        return t
+        return this.tokens[this.pos] || { type: "EOF", literal: "" }
     }
 
     private peek(n = 0): Token {
