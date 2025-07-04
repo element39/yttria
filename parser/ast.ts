@@ -19,6 +19,8 @@ export type ExpressionType =
     | "BinaryExpression" // n > 1
     | "UnaryExpression" // -n
 
+    | "VariableDeclaration"
+
     | "NumberLiteral"
     | "StringLiteral"
     | "BooleanLiteral"
@@ -71,6 +73,14 @@ export type ElseExpression = Expression & {
 export type ReturnExpression = Expression & {
     type: "ReturnExpression"
     value: Expression | null
+}
+
+export type VariableDeclaration = Expression & {
+    type: "VariableDeclaration"
+    name: Identifier
+    value: Expression
+    typeAnnotation?: Identifier
+    mutable: boolean
 }
 
 export type NumberLiteral = Expression & {

@@ -25,5 +25,7 @@ export const Keywords = [
     "fn",
     "if",
     "else",
-    "return"
+    "return",
+    "let",
+    "const",
 ]

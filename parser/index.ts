@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression, VariableDeclaration } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -179,9 +179,68 @@ export class Parser {
                 return this.parseIfExpression()
             case "return":
                 return this.parseReturnExpression()
+            case "let":
+                return this.parseVariableDeclaration(true)
+            case "const":
+                return this.parseVariableDeclaration(false)
         }
 
         return null
+    }
+
+    private parseVariableDeclaration(mutable: boolean): VariableDeclaration {
+        const name: Identifier = {
+            type: "Identifier",
+            value: this.peek().literal
+        }
+
+        this.advance()
+
+        if (this.peek().literal !== ":") {
+            // no type annotation
+            // var x := 5
+            if (this.peek().literal !== ":=") {
+                throw new Error("Expected ':=' after variable name")
+            }
+
+            this.advance()
+            const value = this.parseExpression()
+            if (!value) {
+                throw new Error("Expected value after ':='")
+            }
+
+            return {
+                type: "VariableDeclaration",
+                name,
+                value,
+                mutable
+            }
+        }
+        this.advance()
+
+        const typeAnnotation: Identifier = {
+            type: "Identifier",
+            value: this.peek().literal
+        }
+
+        this.advance()
+        if (this.peek().literal !== "=") {
+            throw new Error("Expected '=' after type annotation")
+        }
+
+        this.advance()
+        const value = this.parseExpression()
+        if (!value) {
+            throw new Error("Expected value after '='")
+        }
+
+        return {
+            type: "VariableDeclaration",
+            name,
+            value,
+            typeAnnotation,
+            mutable
+        }
     }
 
     private visitComment(t: Token): CommentExpression {

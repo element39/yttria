@@ -113,6 +113,19 @@ export class Lexer {
                 continue
             }
 
+            const two = char + this.peek()
+
+            // multi-char delimiters
+            if ([":="].includes(two)) {
+                this.tokens.push({
+                    type: "Delimiter",
+                    literal: two
+                })
+                this.advance()
+                continue
+            }
+
+
             // delimiters
             if (["(", ")", "{", "}", ",", ";", ":"].includes(char)) {
                 this.tokens.push({
@@ -123,7 +136,6 @@ export class Lexer {
             }
 
             // multi-char operators
-            const two = char + this.peek()
             if ([
                 "==", "!=", "<=", ">=", "->", "=>", "&&", "||", "++", "--", "+=", "-=", "*=", "/="
             ].includes(two)) {

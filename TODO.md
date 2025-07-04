@@ -34,5 +34,8 @@
 - [x] binary expressions
 - [x] unary expressions
 
+- [x] variables
+- [ ] member access
+
 - [x] comments
 - [ ] error handling (syntax)
