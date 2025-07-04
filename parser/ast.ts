@@ -10,6 +10,7 @@ export type ExpressionType =
 
     | "FunctionDeclaration"
     | "FunctionParam"
+    | "FunctionCall"
     | "ReturnExpression"
     
     | "IfExpression"
@@ -41,6 +42,12 @@ export type FunctionDeclaration = Expression & {
     params: FunctionParam[]
     returnType: Identifier
     body: Expression[]
+}
+
+export type FunctionCall = Expression & {
+    type: "FunctionCall"
+    callee: Identifier
+    args: Expression[]
 }
 
 export type FunctionParam = {

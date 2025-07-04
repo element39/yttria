@@ -24,7 +24,7 @@
 - [x] identifiers
 
 - [x] functions
-- [] fn calls
+- [x] fn calls
 - [x] blocks
 - [x] return expressions
 

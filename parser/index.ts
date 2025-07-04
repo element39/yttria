@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -106,9 +106,6 @@ export class Parser {
             const tok = this.peek()
             this.advance()
             return this.table[tok.type]!(tok)
-            
-            // if something breaks replace this clause with
-            // return this.table[t.type](t)
         }
 
         return null
@@ -142,7 +139,32 @@ export class Parser {
         }
     }
 
-    private visitIdentifier(t: Token): Identifier {
+    private visitIdentifier(t: Token): Identifier | FunctionCall {
+        if (this.peek().literal === "(") {
+            this.advance()
+            const args: Expression[] = []
+
+            if (this.peek().literal !== ")") {
+                while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
+                    const arg = this.parseExpression()
+                    if (!arg) throw new Error("Expected expression in function call arguments")
+                    args.push(arg)
+
+                    if (this.peek().literal === ",") {
+                        this.advance()
+                    }
+                }
+            }
+
+            this.advance()
+
+            return {
+                type: "FunctionCall",
+                callee: this.visitIdentifier(t) as Identifier,
+                args
+            } as FunctionCall
+        }
+
         return {
             type: "Identifier",
             value: t.literal
@@ -172,43 +194,52 @@ export class Parser {
     private parseFunctionDeclaration(): FunctionDeclaration {
         const name: Identifier = {
             type: "Identifier",
-            value: this.advance().literal
+            value: this.peek().literal
         }
 
-        if (this.advance().literal !== "(") {
+        this.advance()
+
+        if (this.peek().literal !== "(") {
             throw new Error("Expected '(' after function name")
         }
 
         const params: FunctionParam[] = []
 
-        while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
-            const name: Identifier = {
-                type: "Identifier",
-                value: this.advance().literal
-            }
 
-            this.advance()
-            if (this.peek().literal !== ":") {
-                throw new Error("Expected ':' after parameter name")
-            }
+        if (this.peek(1).literal !== ")") {
+            while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
+                const name: Identifier = {
+                    type: "Identifier",
+                    value: this.advance().literal
+                }
 
-            const type: Identifier = {
-                type: "Identifier",
-                value: this.advance().literal
-            }
+                this.advance()
 
-            params.push({
-                type: "FunctionParam",
-                name,
-                paramType: type
-            })
+                if (this.peek().literal !== ":") {
+                    throw new Error("Expected ':' after parameter name")
+                }
 
-            if (this.peek().literal === ",") {
+                const type: Identifier = {
+                    type: "Identifier",
+                    value: this.advance().literal
+                }
+
+                params.push({
+                    type: "FunctionParam",
+                    name,
+                    paramType: type
+                })
+
+                if (this.peek().literal === ",") {
+                    this.advance()
+                }
+
                 this.advance()
             }
-
+        } else {
             this.advance()
         }
+        
         this.advance()
         
         if (this.peek().literal !== "->") {
@@ -256,7 +287,7 @@ export class Parser {
     private parseReturnExpression(): ReturnExpression {
         return {
             type: "ReturnExpression",
-            value: this.parseExpression(0, this.advance()) || {
+            value: this.parseExpression(0, this.peek()) || {
                 type: "NullLiteral",
                 value: null
             } as NullLiteral
