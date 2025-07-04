@@ -33,7 +33,11 @@ yttria is a statically-typed language, meaning types are checked at compile time
 ```ts
 // basic types
 int // 32-bit signed integer
+i_ // where _ is the bit size (e.g., i64 for 64-bit signed integer)
+
 float // 64-bit floating point number
+f_ // where _ is the bit size (e.g., f32 for 32-bit floating point number)
+
 bool // boolean (true or false)
 string // utf8 string
 rune // 1 utf8 character
