@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BooleanLiteral, Expression, FunctionDeclaration, FunctionParam, Identifier, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral } from "./ast"
+import { BinaryExpression, BooleanLiteral, Expression, FunctionDeclaration, FunctionParam, Identifier, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -17,6 +17,19 @@ export class Parser {
 
         Identifier: this.visitIdentifier.bind(this),
         Keyword: this.visitKeyword.bind(this),
+    }
+
+    precedence: { [op: string]: number } = {
+        "==": 1,
+        "!=": 1,
+        "<": 2,
+        ">": 2,
+        "<=": 2,
+        ">=": 2,
+        "+": 3,
+        "-": 3,
+        "*": 4,
+        "/": 4,
     }
     
     constructor(tokens: Token[]) {
@@ -36,14 +49,43 @@ export class Parser {
             if (expr) {
                 this.program.body.push(expr)
             }
-            this.advance()
         }
 
         return this.program
     }
 
-    private parseExpression(tok?: Token): Expression | null {
+    private parseExpression(precedence = 0, tok?: Token): Expression | null {
+        let left = this.parsePrimary()
+
+        while (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
+            const op = this.peek()
+            this.advance()
+            const right = this.parseExpression(this.getPrecedence(op))
+            if (!right) return null
+            
+            left = {
+                type: "BinaryExpression",
+                left,
+                operator: op.literal,
+                right
+            } as BinaryExpression
+        }
+
+        return left
+    }
+
+    private parsePrimary(tok?: Token): Expression | null {
         const t = tok || this.peek()
+
+        if (t.literal === "(") {
+            this.advance() // consume '('
+            const expr = this.parseExpression()
+            if (this.peek().literal !== ")") {
+                throw new Error("Expected ')' after expression")
+            }
+            this.advance() // consume ')'
+            return expr
+        }
 
         if (t.type in this.table) {
             return this.table[t.type]!(t)
@@ -53,6 +95,7 @@ export class Parser {
     }
 
     private visitNumberLiteral(t: Token): NumberLiteral {
+        this.advance()
         return {
             type: "NumberLiteral",
             value: parseFloat(t.literal)
@@ -60,6 +103,7 @@ export class Parser {
     }
 
     private visitStringLiteral(t: Token): StringLiteral {
+        this.advance()
         return {
             type: "StringLiteral",
             value: t.literal
@@ -67,6 +111,7 @@ export class Parser {
     }
 
     private visitBooleanLiteral(t: Token): BooleanLiteral {
+        this.advance()
         return {
             type: "BooleanLiteral",
             value: t.literal === "true"
@@ -74,6 +119,7 @@ export class Parser {
     }
 
     private visitNullLiteral(t: Token): NullLiteral {
+        this.advance()
         return {
             type: "NullLiteral",
             value: null
@@ -81,6 +127,7 @@ export class Parser {
     }
 
     private visitIdentifier(t: Token): Identifier {
+        this.advance()
         return {
             type: "Identifier",
             value: t.literal
@@ -149,7 +196,7 @@ export class Parser {
             value: this.advance().literal
         }
 
-        this.advance() // consume the closing parenthesis
+        this.advance()
         
         const body: Expression[] = this.parseBlock()
 
@@ -185,7 +232,7 @@ export class Parser {
     private parseReturnExpression(): ReturnExpression {
         return {
             type: "ReturnExpression",
-            value: this.parseExpression(this.advance()) || {
+            value: this.parseExpression(0, this.advance()) || {
                 type: "NullLiteral",
                 value: null
             } as NullLiteral
@@ -200,5 +247,13 @@ export class Parser {
 
     private peek(n = 0): Token {
         return this.tokens[this.pos + n] || { type: "EOF", literal: "" }
+    }
+
+    private getPrecedence(token: Token): number {
+        return this.precedence[token.literal] || 0
+    }
+
+    private peekPrecedence(n = 1): number {
+        return this.getPrecedence(this.peek()) || 0
     }
 }

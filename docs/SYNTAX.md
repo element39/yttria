@@ -85,11 +85,11 @@ if (a < b) {
     io.println("a is equal to b")
 }
 
-for (let i := 0 -> 5) {
+for (let i := 0 .. 5) {
     io.println(i) // 0, 1, 2, 3, 4 (exclusive)
 }
 
-for (let i := 0 => 5) {
+for (let i := 0 ... 5) {
     io.println(i) // 0, 1, 2, 3, 4, 5 (inclusive)
 }
 
@@ -154,8 +154,8 @@ struct Point {
 }
 
 // main.yt
-use point;
-const p := new Point(1.0, 2.0)
+use point as poi;
+const p := new poi.Point(1.0, 2.0)
 ```
 
 ### enums
@@ -199,7 +199,15 @@ fn map<T, U>(list: List<T>, fn: (T) -> U) -> List<U> {
         result.append(fn(item))
     }
     return result
-}```
+}
+
+fn main() {
+    let numbers := [1, 2, 3, 4, 5]
+    let strings := map(numbers, (n) => `Number: {n}`)
+    printList(strings) // "Number: 1", "Number: 2", etc.
+    printList<int>(numbers) // 1, 2, 3, 4, 5
+}
+```
 
 ### pattern matching
 yttria has powerful pattern matching capabilities, allowing for more expressive and concise code. Pattern matching can be used with enums, structs, and tuples, making it easy to destructure and work with complex data types.
@@ -208,9 +216,9 @@ yttria has powerful pattern matching capabilities, allowing for more expressive 
 let point := new Point(1.0, 2.0)
 
 switch (point) {
-    case Point(x, y):
-        io.println(`Point at ({x}, {y})`)
-    case Point(x, y) if (x > 0 && y > 0):
+    case Point(x, y) as p:
+        io.println(`Point at ({p.x}, {p.y})`)
+    case Point(x, y) as p if (p.x > 0 && p.y > 0):
         io.println("Point is in the first quadrant")
     default:
         io.println("Unknown point")
