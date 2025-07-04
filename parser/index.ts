@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, Expression, FunctionDeclaration, FunctionParam, Identifier, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral } from "./ast"
+import { BinaryExpression, BooleanLiteral, Expression, FunctionDeclaration, FunctionParam, Identifier, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -77,16 +77,30 @@ export class Parser {
     private parsePrimary(tok?: Token): Expression | null {
         const t = tok || this.peek()
 
+        // (x + y) / z
         if (t.literal === "(") {
-            this.advance() // consume '('
+            this.advance()
             const expr = this.parseExpression()
             if (this.peek().literal !== ")") {
                 throw new Error("Expected ')' after expression")
             }
-            this.advance() // consume ')'
+            this.advance()
             return expr
         }
 
+        // -x !y
+        if (t.type === "Operator" && (t.literal === "-" || t.literal === "!")) {
+            this.advance()
+            const operand = this.parseExpression(100)
+            if (!operand) throw new Error("Expected expression after unary operator")
+            return {
+                type: "UnaryExpression",
+                operator: t.literal,
+                operand
+            } as UnaryExpression
+        }
+
+        // others
         if (t.type in this.table) {
             return this.table[t.type]!(t)
         }
