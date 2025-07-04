@@ -72,7 +72,7 @@ export type ElseExpression = Expression & {
 
 export type ReturnExpression = Expression & {
     type: "ReturnExpression"
-    value: Expression | null
+    value: Expression
 }
 
 export type VariableDeclaration = Expression & {

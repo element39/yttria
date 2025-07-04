@@ -18,10 +18,13 @@ import { Typechecker } from "./typechecker"
 // `.trim()
 
 const program = `
-const a: int = 5
-const b: bool = true
-const c: string = "hello world"
-// const d: string? = null
+fn main() -> int {
+    if (a > 1) {
+        return 1
+    }
+
+    return 0
+}
 `.trim()
 
 const start = performance.now()
