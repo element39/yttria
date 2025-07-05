@@ -1,8 +1,12 @@
-import { Expression, ExpressionType, FunctionDeclaration, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { Expression, ExpressionType, FunctionDeclaration, IfExpression, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { CheckerSymbol } from "./types";
 
 export class Typechecker {
-    ast: ProgramExpression;
+    src: ProgramExpression;
+    ast: ProgramExpression = {
+        type: "Program",
+        body: [],
+    }
 
     // ← now allows "int", "Point", "MyStruct", etc.
     types: Record<string, CheckerSymbol> = {
@@ -13,119 +17,158 @@ export class Typechecker {
         null:  { type: "null" },
     }
 
-    table: { [key in ExpressionType]?: (e: Expression) => void } = {
+    table: { [key in ExpressionType]?: (e: any) => Expression } = {
         VariableDeclaration: this.checkVariableDeclaration.bind(this),
         FunctionDeclaration: this.checkFunctionDeclaration.bind(this),
     }
 
     constructor(program: ProgramExpression) {
-        this.ast = program;
+        this.src = program;
     }
 
-    public check(): void {
-        for (const e of this.ast.body) {
+    public check(): ProgramExpression {
+        for (let e of this.src.body) {
             if (e.type in this.table) {
-                this.table[e.type]!(e);
+                const expr = this.table[e.type]!(e);
+                this.ast.body.push(expr);
             }
         }
+
+        return this.ast;
     }
 
-    private checkVariableDeclaration(e: Expression): void {
-        const { name, value, typeAnnotation, mutable } = e as VariableDeclaration;
+    private checkVariableDeclaration(e: VariableDeclaration): VariableDeclaration {
+        let type: CheckerSymbol | undefined;
 
-        if (!typeAnnotation) {
-            // TODO: infer types
-            throw new Error(`Variable ${name.value} must have a type annotation`);
-        }
-
-        if (!this.types[typeAnnotation.value]) {
-            throw new Error(`Type ${typeAnnotation.value} is not defined`);
-        }
-
-        const type = this.types[typeAnnotation.value];
-
-        switch (value.type) {
-            case "NumberLiteral":
-                if (type.type !== "int" && type.type !== "float") {
-                    throw new Error(`Cannot assign a number to a variable of type ${type.type}`);
-                }
-                break;
-            case "StringLiteral":
-                if (type.type !== "string") {
-                    throw new Error(`Cannot assign a string to a variable of type ${type.type}`);
-                }
-                break;
-            case "BooleanLiteral":
-                if (type.type !== "bool") {
-                    throw new Error(`Cannot assign a boolean to a variable of type ${type.type}`);
-                }
-                break;
-            case "NullLiteral":
-                if (type.type !== "null") {
-                    throw new Error(`Cannot assign null to a variable of type ${type.type}`);
-                }
-                break;
-            default:
-                throw new Error(`Unimplemented variable type ${type.type}`)
-        }
-    }
-
-    private checkFunctionDeclaration(e: Expression): void {
-        const { returnType, body } = e as FunctionDeclaration
-        if (!this.types[returnType.value]) {
-            throw new Error(`Return type ${returnType.value} is not defined`);
-        }
-
-        const type = this.types[returnType.value];
-        if (!type) {
-            throw new Error(`Function return type ${returnType.value} is not defined`);
-        }
-
-        const findReturns = (exprs: Expression[]): ReturnExpression[] => {
-            return exprs.flatMap(expr => {
-                if (expr.type === "ReturnExpression") {
-                    return [expr as ReturnExpression];
-                }
-
-                if ("body" in expr && Array.isArray((expr as any).body)) {
-                    return findReturns((expr as any).body);
-                }
-
-                if ("alternate" in expr && Array.isArray((expr as any).alternate)) {
-                    return findReturns((expr as any).alternate);
-                }
-                
-                return [];
-            });
-        }
-
-        const returns: ReturnExpression[] = findReturns(body);
-        
-        for (const ret of returns) {            
-            switch (ret.value.type) {
+        if (!e.typeAnnotation) {
+            switch (e.value.type) {
                 case "NumberLiteral":
-                    if (type.type !== "int" && type.type !== "float") {
-                        throw new Error(`Cannot return a number from a function with return type ${type.type}`);
-                    }
+                    type = this.types["int"];
                     break;
                 case "StringLiteral":
-                    if (type.type !== "string") {
-                        throw new Error(`Cannot return a string from a function with return type ${type.type}`);
-                    }
+                    type = this.types["string"];
                     break;
                 case "BooleanLiteral":
-                    if (type.type !== "bool") {
-                        throw new Error(`Cannot return a boolean from a function with return type ${type.type}`);
-                    }
+                    type = this.types["bool"];
                     break;
                 case "NullLiteral":
-                    if (type.type !== "null") {
-                        throw new Error(`Cannot return null from a function with return type ${type.type}`);
+                    type = this.types["null"];
+                    break;
+                default:
+                    throw new Error(`Cannot infer type for variable ${e.name.value}`);
+            }
+            e.resolvedType = type;
+        } else {
+            if (!this.types[e.typeAnnotation.value]) {
+                throw new Error(`Type ${e.typeAnnotation.value} is not defined`);
+            }
+
+            switch (e.typeAnnotation.value) {
+                case "int":
+                case "float":
+                    if (e.value.type !== "NumberLiteral") {
+                        throw new Error(`Type mismatch: expected int, got ${e.typeAnnotation.value}`);
+                    }
+                    break;
+                case "string":
+                    if (e.value.type !== "StringLiteral") {
+                        throw new Error(`Type mismatch: expected string, got ${e.typeAnnotation.type}`);
+                    }
+                    break;
+                case "bool":
+                    if (e.value.type !== "BooleanLiteral") {
+                        throw new Error(`Type mismatch: expected bool, got ${e.typeAnnotation.value}`);
+                    }
+                    break;
+                case "null":
+                    if (e.value.type !== "NullLiteral") {
+                        throw new Error(`Type mismatch: expected null, got ${e.typeAnnotation.value}`);
                     }
                     break;
                 default:
-                    throw new Error(`Unimplemented return type ${type.type}`)
+                    throw new Error(`Unknown type ${e.typeAnnotation.value}`);
+            }
+
+            type = this.types[e.typeAnnotation.value];
+        }
+
+        return e
+    }
+
+    private checkFunctionDeclaration(e: FunctionDeclaration): FunctionDeclaration {
+        const findReturns = (body: Expression[]): ReturnExpression[] => {
+            let returns: ReturnExpression[] = [];
+            for (const expr of body) {
+                if (expr.type === "ReturnExpression") {
+                    returns.push(expr as ReturnExpression);
+                } else if (expr.type === "IfExpression") {
+                    const ifExpr = expr as IfExpression;
+                    returns = returns.concat(findReturns(ifExpr.body));
+                    if (ifExpr.alternate) {
+                        returns = returns.concat(findReturns(ifExpr.alternate.body));
+                    }
+                }
+            }
+            return returns;
+        };
+
+        const returns: ReturnExpression[] = findReturns(e.body);
+        if (!e.returnType) {
+            if (returns.length === 0) {
+                throw new Error(`Function ${e.name.value} has no return type specified and no return statements found`);
+            }
+
+            const firstType = returns[0].value.type;
+            for (const ret of returns) {
+                if (ret.value.type !== firstType) {
+                    throw new Error(`Inconsistent return types in function ${e.name.value}`);
+                }
+            }
+
+            switch (firstType) {
+                case "NumberLiteral":
+                    e.resolvedReturnType = this.types["int"];
+                    break;
+                case "StringLiteral":
+                    e.resolvedReturnType = this.types["string"];
+                    break;
+                case "BooleanLiteral":
+                    e.resolvedReturnType = this.types["bool"];
+                    break;
+                case "NullLiteral":
+                    e.resolvedReturnType = this.types["null"];
+                    break;
+                default:
+                    throw new Error(`Cannot infer return type for function ${e.name.value}`);
+            }
+        } else {
+            for (const ret of returns) {
+                switch (ret.value.type) {
+                    case "NumberLiteral":
+                        if (e.returnType.value !== "int") {
+                            throw new Error(`Type mismatch: expected ${e.returnType.value}, got int`);
+                        }
+                        break;
+                    case "StringLiteral":
+                        if (e.returnType.value !== "string") {
+                            throw new Error(`Type mismatch: expected ${e.returnType.value}, got string`);
+                        }
+                        break;
+                    case "BooleanLiteral":
+                        if (e.returnType.value !== "bool") {
+                            throw new Error(`Type mismatch: expected ${e.returnType.value}, got bool`);
+                        }
+                        break;
+                    case "NullLiteral":
+                        if (e.returnType.value !== "null") {
+                            throw new Error(`Type mismatch: expected ${e.returnType.value}, got null`);
+                        }
+                        break;
+                    default:
+                        throw new Error(`Cannot infer type for return value in function ${e.name.value}`);
+                }
             }
         }
+        return e
     }
 }

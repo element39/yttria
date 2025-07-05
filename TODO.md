@@ -39,3 +39,21 @@
 
 - [x] comments
 - [ ] error handling (syntax)
+
+## typechecker
+- [x] variables
+  - [x] infer type from usage
+  - [x] annotation validation
+- [ ] functions
+  - [ ] infer return type from usage
+  - [ ] type consistency
+  - [ ] parameter type validation
+- [ ] function calls
+- [ ] expressions
+- [ ] binary expressions
+- [ ] unary expressions
+- [ ] literals
+- [ ] identifiers
+
+## code generator (llvm-bindings)
+...

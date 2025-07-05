@@ -301,17 +301,25 @@ export class Parser {
         
         this.advance()
         
-        if (this.peek().literal !== "->") {
-            throw new Error("Expected '->' after function parameters")
+        if (this.peek().literal === "->") {
+            const returnType: Identifier = {
+                type: "Identifier",
+                value: this.advance().literal
+            }
+
+            this.advance()
+            
+            const body: Expression[] = this.parseBlock()
+
+            return {
+                type: "FunctionDeclaration",
+                name,
+                params,
+                body,
+                returnType
+            }
         }
 
-        const returnType: Identifier = {
-            type: "Identifier",
-            value: this.advance().literal
-        }
-
-        this.advance()
-        
         const body: Expression[] = this.parseBlock()
 
         return {
@@ -319,7 +327,6 @@ export class Parser {
             name,
             params,
             body,
-            returnType
         }
     }
 

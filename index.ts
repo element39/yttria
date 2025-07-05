@@ -18,14 +18,14 @@ import { Typechecker } from "./typechecker"
 // `.trim()
 
 const program = `
-fn main() -> int {
-    if (a > 1) {
-        return 1
+fn main() {
+    if (5 > 2) {
+        return 2
     }
 
-    return 0
+    return 5
 }
-`.trim()
+`
 
 const start = performance.now()
 
@@ -41,14 +41,16 @@ console.log(`lexed ${t.length} tokens in ${(lexerTime - start).toFixed(3)}ms`)
 const p = new Parser(t)
 const ast = p.parse()
 
-const astTime = performance.now()
-
 writeFileSync("ast.json", JSON.stringify(ast, null, 2))
 
+const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
 const tc = new Typechecker(ast);
-tc.check()
+const tcAst = tc.check()
+
+writeFileSync("tcAst.json", JSON.stringify(tcAst, null, 2))
+
 
 const typecheckTime = performance.now()
 

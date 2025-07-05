@@ -1,3 +1,5 @@
+import { CheckerSymbol } from "../typechecker/types"
+
 // yttria is an expressive language so statements are NOT allowed
 export type Expression = {
     type: ExpressionType
@@ -42,7 +44,8 @@ export type FunctionDeclaration = Expression & {
     type: "FunctionDeclaration"
     name: Identifier
     params: FunctionParam[]
-    returnType: Identifier
+    returnType?: Identifier
+    resolvedReturnType?: CheckerSymbol
     body: Expression[]
 }
 
@@ -80,6 +83,7 @@ export type VariableDeclaration = Expression & {
     name: Identifier
     value: Expression
     typeAnnotation?: Identifier
+    resolvedType?: CheckerSymbol
     mutable: boolean
 }
 
