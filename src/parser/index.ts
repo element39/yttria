@@ -56,7 +56,7 @@ export class Parser {
     }
 
     private parseExpression(precedence = 0, tok?: Token): Expression | null {
-        let left = this.parsePrimary()
+        let left = this.parsePrimary(tok)
 
         // x++
         while (this.peek().type === "Operator" && (this.peek().literal === "++" || this.peek().literal === "--")) {

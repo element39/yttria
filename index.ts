@@ -55,10 +55,10 @@ console.log(`typechecked in ${(typecheckTime - astTime).toFixed(3)}ms`)
 const gen = new LLVMGen(c)
 const ll = gen.generate()
 
-Bun.write("output.ll", ll)
+Bun.write("out.ll", ll)
 
 const llTime = performance.now()
 
-console.log(`generated ${Buffer.byteLength(ll, 'utf8') / 1024}KB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms`)
+console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1000).toFixed(3)}KB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms`)
 
 console.log(`total time: ${(typecheckTime - start).toFixed(3)}ms`)
