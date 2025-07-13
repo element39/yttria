@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "@types/node": "^22.15.17",
+    "@types/node": "^22.16.3",
     "llvm-bindings": "^0.4.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.14"
+    "@types/bun": "^1.2.18"
   }
 }
