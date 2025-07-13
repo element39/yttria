@@ -47,9 +47,9 @@ yttria is designed to be a **fast, expressive language** that lets you build any
 It combines the **performance of C** with the **expressiveness of Typescript**, making it ideal for both beginners and experienced developers.
 Whether you're building web apps, games, or low-level systems, yttria has you covered.
 
-## syntax guide
+## syntax guide & language roadmap
 
-the yttria syntax is designed to be **familiar and intuitive**, especially for those with experience in languages like Go/C, Typescript or Rust. view it [here](./docs/SYNTAX.md).
+the yttria syntax is designed to be **familiar and intuitive**, especially for those with experience in languages like Go/C, Typescript or Rust. view it [here](./docs/SYNTAX.md). the current progress with the yttria language is documented in the [todo](./TODO.md) and also in the [language roadmap](./docs/ROADMAP.md)
 
 ## getting started
 to get started with yttria, you can use the cli tool.
