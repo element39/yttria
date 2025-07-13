@@ -14,7 +14,7 @@
   lexer             85%      ███████████▒░      no eta
   parser            80%      ██████████▒░░      no eta
   typechecker       65%      ████████▒░░░░      1 week
-  codegen           0%       ░░░░░░░░░░░░░      2-3 weeks
+  codegen           5%       ▒░░░░░░░░░░░░      2-3 weeks
 ```
 
 ### std
