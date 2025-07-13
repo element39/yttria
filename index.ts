@@ -1,7 +1,7 @@
 import { writeFileSync } from "fs"
-import { Lexer } from "./lexer"
-import { Parser } from "./parser"
-import { Typechecker } from "./typechecker"
+import { Lexer } from "./src/lexer"
+import { Parser } from "./src/parser"
+import { Typechecker } from "./src/typechecker"
 
 // const program = `
 // fn fib(n: int) -> int {

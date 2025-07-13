@@ -8,8 +8,8 @@
 
 ---
 
-> [!CAUTION]
-> ### yttria is still in extremely early development, so expect breaking changes and limited documentation, some stuff may not even exist yet.
+> [!CAUTION] 
+> ### yttria is still in early development and is **EXTREMELY** experimental. expect breaking changes and limited documentation, some stuff may not even exist yet.
 
 <div style="display: flex; align-items: flex-start; gap: 2em;">
 
