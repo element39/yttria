@@ -18,14 +18,10 @@ import { Typechecker } from "./typechecker"
 // `.trim()
 
 const program = `
-fn main() {
-    if (5 > 2) {
-        return 2
-    }
-
-    return 5
+fn main() -> int {
+    printf("hello")
 }
-`
+`.trim()
 
 const start = performance.now()
 

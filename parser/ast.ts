@@ -19,7 +19,8 @@ export type ExpressionType =
     | "ElseExpression"
 
     | "BinaryExpression" // n > 1
-    | "UnaryExpression" // -n
+    | "PreUnaryExpression" // -n
+    | "PostUnaryExpression" // x++
 
     | "VariableDeclaration"
 
@@ -114,11 +115,20 @@ export type BinaryExpression = Expression & {
     right: Expression
 }
 
-export type UnaryExpression = Expression & {
-    type: "UnaryExpression"
+export type BaseUnaryExpression = Expression & {
     operator: string
     operand: Expression
 }
+
+export type PreUnaryExpression = BaseUnaryExpression & {
+    type: "PreUnaryExpression"
+}
+
+export type PostUnaryExpression = BaseUnaryExpression & {
+    type: "PostUnaryExpression"
+}
+
+export type UnaryExpression = PreUnaryExpression | PostUnaryExpression
 
 export type CommentExpression = Expression & {
     type: "CommentExpression"

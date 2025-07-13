@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, UnaryExpression, VariableDeclaration } from "./ast"
+import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, VariableDeclaration } from "./ast"
 
 export class Parser {
     tokens: Token[]
@@ -58,6 +58,17 @@ export class Parser {
     private parseExpression(precedence = 0, tok?: Token): Expression | null {
         let left = this.parsePrimary()
 
+        // x++
+        while (this.peek().type === "Operator" && (this.peek().literal === "++" || this.peek().literal === "--")) {
+            const op = this.peek();
+            this.advance();
+            left = {
+                type: "PostUnaryExpression",
+                operator: op.literal,
+                operand: left
+            } as PostUnaryExpression;
+        }
+
         // x + y / z
         while (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
             const op = this.peek()
@@ -96,10 +107,10 @@ export class Parser {
             const operand = this.parseExpression(100)
             if (!operand) throw new Error("Expected expression after unary operator")
             return {
-                type: "UnaryExpression",
+                type: "PreUnaryExpression",
                 operator: t.literal,
                 operand
-            } as UnaryExpression
+            } as PreUnaryExpression
         }
 
         if (t.type in this.table) {

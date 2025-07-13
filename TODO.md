@@ -45,15 +45,16 @@
   - [x] infer type from usage
   - [x] annotation validation
 - [ ] functions
-  - [ ] infer return type from usage
-  - [ ] type consistency
+  - [x] infer return type from usage
+  - [x] type consistency
   - [ ] parameter type validation
 - [ ] function calls
-- [ ] expressions
-- [ ] binary expressions
-- [ ] unary expressions
-- [ ] literals
-- [ ] identifiers
+- [x] if statements
+- [x] expressions
+- [x] binary expressions
+- [x] unary expressions
+- [x] literals
+- [x] identifiers
 
 ## code generator (llvm-bindings)
 ...
