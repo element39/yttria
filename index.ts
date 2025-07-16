@@ -18,11 +18,14 @@ import { Typechecker } from "./src/typechecker"
 // `.trim()
 
 const program = `
-fn main() -> void {
-    const a: int = 8
-    const b := 3
-
-    return (a + b) / 2
+fn main() -> int {
+    if (1 + 2 > 3) {
+        return 1
+    } else if (1 + 2 < 3) {
+        return 2
+    } else {
+        return 3
+    }
 }
 `.trim()
 

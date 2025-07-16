@@ -205,6 +205,7 @@ export class Typechecker {
         }
 
         const checkedBody: Expression[] = [];
+
         for (const stmt of body) {
             if (stmt.type === "VariableDeclaration") {
                 checkedBody.push(this.checkVariableDeclaration(stmt as VariableDeclaration));

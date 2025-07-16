@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, NumberLiteral, ReturnExpression, VariableDeclaration } from "../../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -12,6 +12,7 @@ export class LLVMGen extends Codegen {
         FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
         VariableDeclaration: this.genVariableDeclaration.bind(this),
+        IfExpression: this.genIfExpression.bind(this),
     }
 
     types: { [key: string]: vm.Type } = {
@@ -78,6 +79,28 @@ export class LLVMGen extends Codegen {
                         return this.helper.builder.CreateSDiv(left, right);
                     case "%":
                         return this.helper.builder.CreateSRem(left, right);
+
+                    case ">":
+                        return this.helper.builder.CreateICmpSGT(left, right, "gt");
+                    case "<":
+                        return this.helper.builder.CreateICmpSLT(left, right, "lt");
+                    case ">=":
+                        return this.helper.builder.CreateICmpSGE(left, right, "ge");
+                    case "<=":
+                        return this.helper.builder.CreateICmpSLE(left, right, "le");
+                    case "==":
+                        return this.helper.builder.CreateICmpEQ(left, right, "eq");
+                    case "!=":
+                        return this.helper.builder.CreateICmpNE(left, right, "ne");
+                    case "&&":
+                        const and = this.helper.builder.CreateAnd(left, right, "and");
+                        return this.helper.builder.CreateICmpNE(and, this.helper.builder.getInt32(0), "and_result");
+                    case "||":
+                        const or = this.helper.builder.CreateOr(left, right, "or");
+                        return this.helper.builder.CreateICmpNE(or, this.helper.builder.getInt32(0), "or_result");
+                    // case "^^":
+                    //     const xor = this.helper.builder.CreateXor(left, right, "xor");
+                    //     return this.helper.builder.CreateICmpNE(xor, this.helper.builder.getInt32(0), "xor_result");
                     default:
                         throw new Error(`Unknown binary operator: ${b.operator}`);
                 }
@@ -104,6 +127,7 @@ export class LLVMGen extends Codegen {
 
         this.helper.block("entry", () => {
             let returned = false;
+
             for (const e of expr.body) {
                 if (e.type in this.table) {
                     if (e.type === "ReturnExpression") returned = true;
@@ -154,5 +178,9 @@ export class LLVMGen extends Codegen {
         }
         this.setVariable(name, alloca);
         return alloca;
+    }
+
+    genIfExpression(expr: IfExpression) {
+        
     }
 }
