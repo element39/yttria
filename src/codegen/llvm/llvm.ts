@@ -111,6 +111,7 @@ export class LLVMGen extends Codegen {
                     fnGen && fnGen(e);
                 }
             }
+
             if (!returned && returnType.isVoidTy()) {
                 this.helper.builder.CreateRetVoid();
             }

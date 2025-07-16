@@ -153,7 +153,6 @@ export class Typechecker {
     private checkExpression(expr: Expression): Expression {
         if (expr.type in this.table) {
             const e = this.table[expr.type]!(expr)
-            // console.log(JSON.stringify(e, null, 2))
             return e
         }
         
@@ -183,7 +182,6 @@ export class Typechecker {
         }
 
         this.pushSymbol(name.value, resolvedType);
-        console.log("yo", { ...expr, resolvedType, mutable })
         return { ...expr, resolvedType, mutable } as VariableDeclaration;
     }
 
@@ -220,26 +218,33 @@ export class Typechecker {
         }
 
         let resolvedReturnType: CheckerSymbol;
-        if (returnType) {
-            resolvedReturnType = this.resolveTypeAnnotation(returnType);
-        } else {
-            const findReturns = (stmts: Expression[]): ReturnExpression[] => {
-                let outs: ReturnExpression[] = [];
-                for (const s of stmts) {
-                    if (s.type === "ReturnExpression") {
-                        outs.push(s as ReturnExpression);
-                    } else if (s.type === "IfExpression") {
-                        const ie = s as IfExpression;
-                        outs = outs.concat(findReturns(ie.body));
-                        if (ie.alternate) {
-                            outs = outs.concat(findReturns(ie.alternate.body));
-                        }
+        const findReturns = (stmts: Expression[]): ReturnExpression[] => {
+            let outs: ReturnExpression[] = [];
+            for (const s of stmts) {
+                if (s.type === "ReturnExpression") {
+                    outs.push(s as ReturnExpression);
+                } else if (s.type === "IfExpression") {
+                    const ie = s as IfExpression;
+                    outs = outs.concat(findReturns(ie.body));
+                    if (ie.alternate) {
+                        outs = outs.concat(findReturns(ie.alternate.body));
                     }
                 }
-                return outs;
-            };
+            }
+            return outs;
+        };
 
-            const returns = findReturns(checkedBody);
+        const returns = findReturns(checkedBody);
+
+        if (returnType) {
+            resolvedReturnType = this.resolveTypeAnnotation(returnType);
+            returns.forEach((ret) => {
+                const retType = this.inferTypeFromValue(ret.value);
+                if (retType.type !== resolvedReturnType.type) {
+                    throw new Error(`Return type mismatch: expected ${resolvedReturnType.type}, got ${retType.type}`);
+                }
+            });
+        } else {
             if (returns.length > 0) {
                 const firstReturnType = this.inferTypeFromValue(returns[0].value);
                 for (const ret of returns.slice(1)) {

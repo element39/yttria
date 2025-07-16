@@ -18,7 +18,7 @@ import { Typechecker } from "./src/typechecker"
 // `.trim()
 
 const program = `
-fn hi() {
+fn main() -> void {
     const a: int = 8
     const b := 3
 
