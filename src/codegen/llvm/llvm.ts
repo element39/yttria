@@ -140,7 +140,8 @@ export class LLVMGen extends Codegen {
 
     genVariableDeclaration(expr: VariableDeclaration): vm.Value {
         const name = expr.name.value;
-        const ty = expr.typeAnnotation?.value || expr.resolvedType?.type;
+        const ty = expr.typeAnnotation?.value ?? expr.resolvedType?.type;
+
         if (!ty || !(ty in this.types)) {
             throw new Error(`unknown variable type: ${ty}`);
         }

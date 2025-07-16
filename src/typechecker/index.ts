@@ -154,107 +154,108 @@ export class Typechecker {
         if (expr.type in this.table) {
             const e = this.table[expr.type]!(expr)
             // console.log(JSON.stringify(e, null, 2))
-            return e 
+            return e
         }
         
         return expr
     }
 
     private checkVariableDeclaration(expr: VariableDeclaration): Expression {
-        const { name, value, typeAnnotation } = expr
+        const { name, value, typeAnnotation, mutable } = expr;
 
         if (this.getSymbol(name.value)) {
             throw new Error(`Variable "${name.value}" is already declared`)
         }
 
-        let resolvedType: CheckerSymbol
+        if (!typeAnnotation && !value) {
+            throw new Error(`Variable "${name.value}" must have a type annotation or an initial value`)
+        }
 
+        let resolvedType: CheckerSymbol;
         if (typeAnnotation) {
             resolvedType = this.resolveTypeAnnotation(typeAnnotation);
         } else {
-            resolvedType = this.inferTypeFromValue(value);
+            if (!value) {
+                throw new Error(`Variable "${name.value}" must have a type annotation or an initial value`)
+            }
+            const valueType = this.inferTypeFromValue(value);
+            resolvedType = valueType;
         }
 
-        this.pushSymbol(name.value, resolvedType)
-        return { ...expr, resolvedType } as VariableDeclaration
+        this.pushSymbol(name.value, resolvedType);
+        console.log("yo", { ...expr, resolvedType, mutable })
+        return { ...expr, resolvedType, mutable } as VariableDeclaration;
     }
 
     private checkFunctionDeclaration(expr: FunctionDeclaration): Expression {
-        const { name, params, returnType, body } = expr
+        const { name, params, returnType, body } = expr;
         if (this.getSymbol(name.value)) {
-            throw new Error(`Function "${name.value}" is already declared`)
+            throw new Error(`Function "${name.value}" is already declared`);
         }
 
-        this.pushScope()
+        this.pushScope();
 
-            for (const param of params) {
-                if (this.getSymbol(param.name.value)) {
-                    throw new Error(`Parameter "${param.name.value}" is already declared`)
-                }
-
-                if (!param.paramType) {
-                    throw new Error(`Parameter "${param.name.value}" must have a type annotation`)
-                }
-
-                const pType = this.resolveTypeAnnotation(param.paramType)
-                this.pushSymbol(param.name.value, pType)
+        for (const param of params) {
+            if (this.getSymbol(param.name.value)) {
+                throw new Error(`Parameter "${param.name.value}" is already declared`);
             }
-
-            for (const stmt of body) {
-                if (stmt.type === "VariableDeclaration") {
-                    this.checkVariableDeclaration(stmt as VariableDeclaration)
-                }
+            if (!param.paramType) {
+                throw new Error(`Parameter "${param.name.value}" must have a type annotation`);
             }
+            const pType = this.resolveTypeAnnotation(param.paramType);
+            this.pushSymbol(param.name.value, pType);
+        }
 
-            let resolvedReturnType: CheckerSymbol
-            if (returnType) {
-                resolvedReturnType = this.resolveTypeAnnotation(returnType)
+        const checkedBody: Expression[] = [];
+        for (const stmt of body) {
+            if (stmt.type === "VariableDeclaration") {
+                checkedBody.push(this.checkVariableDeclaration(stmt as VariableDeclaration));
+            } else if (stmt.type === "ReturnExpression") {
+                const r = stmt as ReturnExpression;
+                r.value = this.checkExpression(r.value);
+                checkedBody.push(r);
             } else {
-                const findReturns = (stmts: Expression[]): ReturnExpression[] => {
-                    let outs: ReturnExpression[] = []
-                    for (const s of stmts) {
-                        if (s.type === "ReturnExpression") {
-                            outs.push(s as ReturnExpression)
-                        } else if (s.type === "IfExpression") {
-                            const ie = s as IfExpression
-                            outs = outs.concat(findReturns(ie.body))
-                            if (ie.alternate) {
-                                outs = outs.concat(findReturns(ie.alternate.body))
-                            }
+                checkedBody.push(this.checkExpression(stmt));
+            }
+        }
+
+        let resolvedReturnType: CheckerSymbol;
+        if (returnType) {
+            resolvedReturnType = this.resolveTypeAnnotation(returnType);
+        } else {
+            const findReturns = (stmts: Expression[]): ReturnExpression[] => {
+                let outs: ReturnExpression[] = [];
+                for (const s of stmts) {
+                    if (s.type === "ReturnExpression") {
+                        outs.push(s as ReturnExpression);
+                    } else if (s.type === "IfExpression") {
+                        const ie = s as IfExpression;
+                        outs = outs.concat(findReturns(ie.body));
+                        if (ie.alternate) {
+                            outs = outs.concat(findReturns(ie.alternate.body));
                         }
                     }
-                    return outs
                 }
+                return outs;
+            };
 
-                const returns = findReturns(body)
-                if (returns.length > 0) {
-                    const firstReturn = this.checkExpression(returns[0].value)
-                    const firstReturnType = this.inferTypeFromValue(firstReturn)
-                    for (const ret of returns.slice(1)) {
-                        const retValue = this.checkExpression(ret.value)
-                        const retType = this.inferTypeFromValue(retValue)
-                        if (retType.type !== firstReturnType.type) {
-                            throw new Error(`Return type mismatch: expected ${firstReturnType.type}, got ${retType.type}`)
-                        }
+            const returns = findReturns(checkedBody);
+            if (returns.length > 0) {
+                const firstReturnType = this.inferTypeFromValue(returns[0].value);
+                for (const ret of returns.slice(1)) {
+                    const retType = this.inferTypeFromValue(ret.value);
+                    if (retType.type !== firstReturnType.type) {
+                        throw new Error(`Return type mismatch: expected ${firstReturnType.type}, got ${retType.type}`);
                     }
-
-                    resolvedReturnType = firstReturnType
-                } else {
-                    resolvedReturnType = this.types.null
                 }
+                resolvedReturnType = firstReturnType;
+            } else {
+                resolvedReturnType = this.types.void; // why was it null before :sob:
             }
+        }
 
-            for (const stmt of body) {
-                if (stmt.type === "ReturnExpression") {
-                    const r = stmt as ReturnExpression
-                    r.value = this.checkExpression(r.value)
-                } else if (stmt.type !== "VariableDeclaration") {
-                    this.checkExpression(stmt)
-                }
-            }
-
-        this.popScope()
-        return { ...expr, resolvedReturnType, body } as FunctionDeclaration
+        this.popScope();
+        return { ...expr, resolvedReturnType, body: checkedBody } as FunctionDeclaration;
     }
 
     private checkIdentifier(expr: Identifier): Expression {
