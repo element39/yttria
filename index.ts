@@ -18,8 +18,8 @@ import { Typechecker } from "./src/typechecker"
 // `.trim()
 
 const program = `
-fn hi() {
-    return 5
+fn hi() -> int {
+    return 5 + 3
 }
 `.trim()
 

@@ -11,6 +11,7 @@ export class Typechecker {
         float:  { type: "float" },
         string: { type: "string" },
         bool:   { type: "bool" },
+        void:   { type: "void" },
         null:   { type: "null" },
     }
     

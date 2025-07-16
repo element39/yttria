@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ReturnExpression } from "../../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ReturnExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -29,10 +29,31 @@ export class LLVMGen extends Codegen {
 
     genExpression(expr: Expression): vm.Value | null {
         switch (expr.type) {
-            case "NumberLiteral": {
+            case "NumberLiteral":
                 const n = expr as NumberLiteral;
                 return this.helper.builder.getInt32(n.value);
-            }
+            case "BinaryExpression":
+                const b = expr as BinaryExpression;
+                const left = this.genExpression(b.left);
+                const right = this.genExpression(b.right);
+                if (!left || !right) {
+                    throw new Error("Invalid binary expression operands");
+                }
+                
+                switch (b.operator) {
+                    case "+":
+                        return this.helper.builder.CreateAdd(left, right);
+                    case "-":
+                        return this.helper.builder.CreateSub(left, right);
+                    case "*":
+                        return this.helper.builder.CreateMul(left, right);
+                    case "/":
+                        return this.helper.builder.CreateSDiv(left, right);
+                    case "%":
+                        return this.helper.builder.CreateSRem(left, right);
+                    default:
+                        throw new Error(`Unknown binary operator: ${b.operator}`);
+                }
         }
 
         return null;
@@ -54,11 +75,17 @@ export class LLVMGen extends Codegen {
         );
 
         const block = this.helper.block("entry", () => {
+            let returned = false;
             for (const e of expr.body) {
                 if (e.type in this.table) {
+                    if (e.type === "ReturnExpression") returned = true;
                     const fnGen = this.table[e.type];
                     fnGen && fnGen(e);
                 }
+            }
+
+            if (!returned && returnType.isVoidTy()) {
+                this.helper.builder.CreateRetVoid();
             }
         });
 
