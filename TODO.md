@@ -44,7 +44,7 @@
 - [x] variables
   - [x] infer type from usage
   - [x] annotation validation
-- [ ] functions
+- [x] functions
   - [x] infer return type from usage
   - [x] type consistency
   - [ ] parameter type validation
@@ -57,4 +57,7 @@
 - [x] identifiers
 
 ## code generator (llvm-bindings)
+- [x] functions
+- [x] returns
+- [x] number literals
 ...

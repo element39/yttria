@@ -1,14 +1,17 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ReturnExpression } from "../../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, NumberLiteral, ReturnExpression, VariableDeclaration } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
     helper: LLVMHelper = new LLVMHelper();
 
-    table: { [key in ExpressionType]?: (expr: any) => vm.Function } = {
+    scope: Record<string, vm.Value>[] = [{}];
+
+    table: { [key in ExpressionType]?: (expr: any) => vm.Function | vm.Value } = {
         FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
+        VariableDeclaration: this.genVariableDeclaration.bind(this),
     }
 
     types: { [key: string]: vm.Type } = {
@@ -16,6 +19,27 @@ export class LLVMGen extends Codegen {
         "void": vm.Type.getVoidTy(this.helper.context),
     };
     
+    private pushScope() {
+        this.scope.push({});
+    }
+
+    private popScope() {
+        this.scope.pop();
+    }
+
+    setVariable(name: string, ptr: vm.Value) {
+        this.scope[this.scope.length - 1][name] = ptr;
+    }
+
+    getVariable(name: string): vm.Value | undefined {
+        for (let i = this.scope.length - 1; i >= 0; i--) {
+            if (name in this.scope[i]) {
+                return this.scope[i][name];
+            }
+        }
+        return undefined;
+    }
+
     generate(): string {
         for (const expr of this.ast.body) {
             if (expr.type in this.table) {
@@ -23,7 +47,6 @@ export class LLVMGen extends Codegen {
                 fn && fn(expr);
             }
         }
-
         return this.helper.print();
     }
 
@@ -32,6 +55,11 @@ export class LLVMGen extends Codegen {
             case "NumberLiteral":
                 const n = expr as NumberLiteral;
                 return this.helper.builder.getInt32(n.value);
+            case "Identifier":
+                const name = (expr as Identifier).value;
+                const ptr = this.getVariable(name);
+                if (!ptr) throw new Error(`Variable "${name}" not found`);
+                return this.helper.builder.CreateLoad(ptr.getType().getPointerElementType(), ptr, name);
             case "BinaryExpression":
                 const b = expr as BinaryExpression;
                 const left = this.genExpression(b.left);
@@ -39,7 +67,6 @@ export class LLVMGen extends Codegen {
                 if (!left || !right) {
                     throw new Error("Invalid binary expression operands");
                 }
-                
                 switch (b.operator) {
                     case "+":
                         return this.helper.builder.CreateAdd(left, right);
@@ -55,7 +82,6 @@ export class LLVMGen extends Codegen {
                         throw new Error(`Unknown binary operator: ${b.operator}`);
                 }
         }
-
         return null;
     }
 
@@ -65,16 +91,18 @@ export class LLVMGen extends Codegen {
         if (!ty || !(ty in this.types)) {
             throw new Error(`Unknown return type: ${ty}`);
         }
-
         const returnType = this.types[ty];
-
         const fn = this.helper.fn(
             name,
             returnType,
             "internal"
         );
 
-        const block = this.helper.block("entry", () => {
+        this.pushScope();
+
+        // TODO: handle function parameters here
+
+        this.helper.block("entry", () => {
             let returned = false;
             for (const e of expr.body) {
                 if (e.type in this.table) {
@@ -83,11 +111,12 @@ export class LLVMGen extends Codegen {
                     fnGen && fnGen(e);
                 }
             }
-
             if (!returned && returnType.isVoidTy()) {
                 this.helper.builder.CreateRetVoid();
             }
         });
+
+        this.popScope();
 
         this.helper.verify(fn);
         return fn;
@@ -97,18 +126,31 @@ export class LLVMGen extends Codegen {
         if (!this.helper.currentFunction) {
             throw new Error("No current function set for return expression");
         }
-
         const value = this.genExpression(expr.value);
         if (this.helper.currentFunction.getReturnType().isVoidTy()) {
             this.helper.builder.CreateRetVoid();
             return this.helper.currentFunction;
         }
-
         if (!value) {
-            throw new Error("Return expression value is not valid");
+            throw new Error(`return expression type unhandled, got ${expr.value.type}`);
         }
-
         this.helper.builder.CreateRet(value);
         return this.helper.currentFunction;
+    }
+
+    genVariableDeclaration(expr: VariableDeclaration): vm.Value {
+        const name = expr.name.value;
+        const ty = expr.typeAnnotation?.value || expr.resolvedType?.type;
+        if (!ty || !(ty in this.types)) {
+            throw new Error(`unknown variable type: ${ty}`);
+        }
+        const type = this.types[ty];
+        const alloca = this.helper.alloc(name, type);
+        const value = this.genExpression(expr.value);
+        if (value) {
+            this.helper.store(alloca, value);
+        }
+        this.setVariable(name, alloca);
+        return alloca;
     }
 }

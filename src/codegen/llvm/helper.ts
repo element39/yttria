@@ -54,4 +54,37 @@ export class LLVMHelper {
         if (body) body();
         return block;
     }
+
+    alloc(name: string, type: vm.Type): vm.AllocaInst {
+        if (!this.currentFunction) throw new Error("No current function for allocation");
+        const entry = this.currentFunction.getEntryBlock();
+
+        const currentBlock = this.builder.GetInsertBlock();
+        this.builder.SetInsertPoint(entry);
+
+        const alloca = this.builder.CreateAlloca(type, null, name);
+        if (currentBlock) this.builder.SetInsertPoint(currentBlock);
+
+        return alloca;
+    }
+
+    store(ptr: vm.Value, value: vm.Value): void {
+        if (!this.currentFunction) throw new Error("No current function for store operation");
+        this.builder.CreateStore(value, ptr);
+    }
+
+    load(ptr: vm.Value, name: string): vm.Value {
+        if (!this.currentFunction) throw new Error("No current function for load operation");
+        return this.builder.CreateLoad(ptr.getType(), ptr, name);
+    }
+
+    variable(name: string, type: vm.Type, value?: vm.Value): { alloca: vm.AllocaInst, load: vm.Value } {
+        const alloca = this.alloc(name, type);
+        if (value) {
+            this.store(alloca, value);
+        }
+
+        const load = this.load(alloca, name);
+        return { alloca, load };
+    }
 }
