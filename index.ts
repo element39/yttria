@@ -19,13 +19,21 @@ import { Typechecker } from "./src/typechecker"
 
 const program = `
 fn main() -> int {
-    if (1 + 2 > 3) {
-        return 1
-    } else if (1 + 2 < 3) {
-        return 2
+    const a := 5
+    const b := 10
+
+    if (a > b) {
+        const c := a
+        return c
+    } else if (a < b) {
+        const d := b
+        return d
     } else {
-        return 3
+        const e := a + b
+        return e
     }
+
+    return 0
 }
 `.trim()
 

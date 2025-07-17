@@ -7,8 +7,13 @@ export class LLVMHelper {
 
     currentFunction: vm.Function | null = null;
 
+    blockId = 0;
+    uniqueName(prefix: string): string {
+        return `${prefix}_${this.blockId++}`;
+    }
+
     print(): string {
-       this.verify()
+        this.verify()
         return this.module.print()
     }
 
@@ -57,14 +62,8 @@ export class LLVMHelper {
 
     alloc(name: string, type: vm.Type): vm.AllocaInst {
         if (!this.currentFunction) throw new Error("No current function for allocation");
-        const entry = this.currentFunction.getEntryBlock();
-
-        const currentBlock = this.builder.GetInsertBlock();
-        this.builder.SetInsertPoint(entry);
-
+        // why did i force it to be in entry before :sob:
         const alloca = this.builder.CreateAlloca(type, null, name);
-        if (currentBlock) this.builder.SetInsertPoint(currentBlock);
-
         return alloca;
     }
 

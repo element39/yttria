@@ -5,6 +5,10 @@
 ---
 ## roadmap
 
+> [!NOTE]
+> this roadmap is subject to change and may be innacurate/outdated at any time
+> please refer to the [status report](#status-report) for the most up-to-date information
+
 <!-- https://ascii.bar -->
 
 ### language core
@@ -37,6 +41,6 @@
 ```
 
 ## status report
+> last updated: 17/7/2025 (dd/mm/yyyy)
 
-yttria is currently in early development, with the lexer and parser being mostly complete
-the typechecker is partially implemented, but the codegen is yet to be started, same story with the stdlib
+yttria is currently in early development, with the lexer and parser being mostly complete, the typechecker is almost fully implemented, and codegen is partially implemented.

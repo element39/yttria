@@ -1,4 +1,4 @@
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast"
+import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast"
 import { CheckerSymbol } from "./types"
 
 export class Typechecker {
@@ -21,6 +21,7 @@ export class Typechecker {
         VariableDeclaration:  this.checkVariableDeclaration.bind(this),
         FunctionDeclaration:  this.checkFunctionDeclaration.bind(this),
         IfExpression:         this.checkIfExpression.bind(this),
+        ElseExpression:       this.checkElseExpression.bind(this),
         Identifier:           this.checkIdentifier.bind(this),
         BinaryExpression:     this.checkBinaryExpression.bind(this),
         PreUnaryExpression:   this.checkPreUnaryExpression.bind(this),
@@ -287,12 +288,7 @@ export class Typechecker {
 
         let alternate: IfExpression["alternate"]
         if (expr.alternate) {
-            this.pushScope()
-                alternate = {
-                    ...expr.alternate,
-                    body: expr.alternate.body.map((s) => this.checkExpression(s))
-                }
-            this.popScope()
+            alternate = this.checkExpression(expr.alternate) as typeof alternate
         }
 
         return {
@@ -301,6 +297,13 @@ export class Typechecker {
             body,
             alternate
         } as IfExpression
+    }
+
+    private checkElseExpression(expr: ElseExpression): Expression {
+        this.pushScope()
+        const body = expr.body.map(s => this.checkExpression(s))
+        this.popScope()
+        return { ...expr, body } as ElseExpression
     }
 
     private checkBinaryExpression(expr: BinaryExpression): Expression {
