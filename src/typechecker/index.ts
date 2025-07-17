@@ -219,6 +219,27 @@ export class Typechecker {
             }
         }
 
+        const hoistVars = (exprs: Expression[]) => {
+            for (const e of exprs) {
+                if (e.type === "VariableDeclaration") {
+                    const vd = e as VariableDeclaration;
+                    this.pushSymbol(vd.name.value, vd.resolvedType!);
+                }
+                else if (e.type === "IfExpression") {
+                    const ie = e as IfExpression;
+                    hoistVars(ie.body);
+                    if (ie.alternate) {
+                        if (ie.alternate.type === "IfExpression") {
+                            hoistVars([(ie.alternate as IfExpression)]);
+                        } else {
+                            hoistVars((ie.alternate as ElseExpression).body);
+                        }
+                    }
+                }
+            }
+        };
+        hoistVars(checkedBody);
+
         let resolvedReturnType: CheckerSymbol;
         const findReturns = (stmts: Expression[]): ReturnExpression[] => {
             let outs: ReturnExpression[] = [];

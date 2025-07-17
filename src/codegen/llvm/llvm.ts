@@ -187,60 +187,50 @@ export class LLVMGen extends Codegen {
         const condition = this.genExpression(expr.condition);
         if (!condition) throw new Error("condition expression must return a value");
 
-        const entry = currentFn.getEntryBlock()
+        const parent = this.helper.builder.GetInsertBlock();
+        if (!parent) throw new Error("no current block for if expression");
 
         const ifTrue = this.helper.block(this.helper.uniqueName("if_true"));
         const ifFalse = this.helper.block(this.helper.uniqueName("if_false"));
 
-        const ifEnd = this.helper.block(this.helper.uniqueName("if_end"), () => {
-            this.helper.builder.CreateBr(entry);
-        });
+        // this gotta be optional or else we get "Function verification failed: main"
+        let ifEnd: vm.BasicBlock | null = null; 
 
-        this.helper.builder.SetInsertPoint(entry);
-    
-        this.helper.builder.CreateCondBr(
-            condition,
-            ifTrue,
-            ifFalse
-        );
+        this.helper.builder.SetInsertPoint(parent);
+        this.helper.builder.CreateCondBr(condition, ifTrue, ifFalse);
 
-        // if
         this.helper.builder.SetInsertPoint(ifTrue);
-        this.pushScope();
         for (const e of expr.body) {
             if (e.type in this.table) {
                 const fnGen = this.table[e.type];
                 fnGen && fnGen(e);
             }
         }
-        this.popScope();
-
         if (!ifTrue.getTerminator()) {
+            if (!ifEnd) ifEnd = this.helper.block(this.helper.uniqueName("if_end"));
             this.helper.builder.CreateBr(ifEnd);
         }
 
-
-        // else / else if
         this.helper.builder.SetInsertPoint(ifFalse);
-        this.pushScope();
         if (expr.alternate) {
-            const alt = expr.alternate;
-            if (alt.type === "IfExpression") {
-                this.genIfExpression(alt);
-            } else if (alt.type === "ElseExpression") {
-                for (const e of alt.body) {
+            if (expr.alternate.type === "IfExpression") {
+                this.genIfExpression(expr.alternate);
+            } else if (expr.alternate.type === "ElseExpression") {
+                for (const e of expr.alternate.body) {
                     if (e.type in this.table) {
                         const fnGen = this.table[e.type];
                         fnGen && fnGen(e);
                     }
                 }
-                this.helper.builder.CreateBr(ifEnd);
             }
         }
-        this.popScope();
-
-        if(!ifFalse.getTerminator()) {
+        if (!ifFalse.getTerminator()) {
+            if (!ifEnd) ifEnd = this.helper.block(this.helper.uniqueName("if_end"));
             this.helper.builder.CreateBr(ifEnd);
+        }
+
+        if (ifEnd) {
+            this.helper.builder.SetInsertPoint(ifEnd);
         }
     }
 }

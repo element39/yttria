@@ -20,20 +20,14 @@ import { Typechecker } from "./src/typechecker"
 const program = `
 fn main() -> int {
     const a := 5
-    const b := 10
 
-    if (a > b) {
-        const c := a
-        return c
-    } else if (a < b) {
-        const d := b
-        return d
+    if (a > 3) {
+        return 1
+    } else if (a < 2) {
+        return 2
     } else {
-        const e := a + b
-        return e
+        return 3
     }
-
-    return 0
 }
 `.trim()
 
