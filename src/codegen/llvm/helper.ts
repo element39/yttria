@@ -7,11 +7,6 @@ export class LLVMHelper {
 
     currentFunction: vm.Function | null = null;
 
-    blockId = 0;
-    uniqueName(prefix: string): string {
-        return `${prefix}_${this.blockId++}`;
-    }
-
     print(): string {
         this.verify()
         return this.module.print()

@@ -180,7 +180,11 @@ export class LLVMGen extends Codegen {
         return alloca;
     }
 
-    genIfExpression(expr: IfExpression) {
+    // the underlying logic was borrowed from Lioncat2002/HelixLang
+    // https://github.com/Lioncat2002/HelixLang/blob/e4c51d952d0963b1b70de1353848a3ad673ae159/src/core/codegen/Codegen.cpp#L134
+    
+    // TODO: make this cleaner, its so clunky rn
+    genIfExpression(expr: IfExpression): vm.Value | void {
         const currentFn = this.helper.currentFunction;
         if (!currentFn) throw new Error("no current function for if expression");
 
@@ -190,47 +194,58 @@ export class LLVMGen extends Codegen {
         const parent = this.helper.builder.GetInsertBlock();
         if (!parent) throw new Error("no current block for if expression");
 
-        const ifTrue = this.helper.block(this.helper.uniqueName("if_true"));
-        const ifFalse = this.helper.block(this.helper.uniqueName("if_false"));
+        const ifTrue = this.helper.block("if_true");
+        let ifEnd: vm.BasicBlock | null = null;
+        let ifFalse: vm.BasicBlock;
 
-        // this gotta be optional or else we get "Function verification failed: main"
-        let ifEnd: vm.BasicBlock | null = null; 
+        if (expr.alternate) {
+            ifFalse = this.helper.block("if_false");
+        } else {
+            ifEnd = this.helper.block("if_end");
+            ifFalse = ifEnd;
+        }
 
         this.helper.builder.SetInsertPoint(parent);
         this.helper.builder.CreateCondBr(condition, ifTrue, ifFalse);
 
         this.helper.builder.SetInsertPoint(ifTrue);
+        let trueReturned = false;
         for (const e of expr.body) {
             if (e.type in this.table) {
+                if (e.type === "ReturnExpression") trueReturned = true;
                 const fnGen = this.table[e.type];
                 fnGen && fnGen(e);
             }
         }
-        if (!ifTrue.getTerminator()) {
-            if (!ifEnd) ifEnd = this.helper.block(this.helper.uniqueName("if_end"));
+        if (!trueReturned) {
+            if (!ifEnd) ifEnd = this.helper.block("if_end");
             this.helper.builder.CreateBr(ifEnd);
         }
 
-        this.helper.builder.SetInsertPoint(ifFalse);
+        let ifFalseReturned = false;
         if (expr.alternate) {
+            this.helper.builder.SetInsertPoint(ifFalse);
             if (expr.alternate.type === "IfExpression") {
                 this.genIfExpression(expr.alternate);
             } else if (expr.alternate.type === "ElseExpression") {
                 for (const e of expr.alternate.body) {
                     if (e.type in this.table) {
+                        if (e.type === "ReturnExpression") ifFalseReturned = true;
                         const fnGen = this.table[e.type];
                         fnGen && fnGen(e);
                     }
                 }
+                if (!ifFalse.getTerminator()) {
+                    if (!ifEnd) ifEnd = this.helper.block("if_end");
+                    this.helper.builder.CreateBr(ifEnd);
+                }
             }
         }
-        if (!ifFalse.getTerminator()) {
-            if (!ifEnd) ifEnd = this.helper.block(this.helper.uniqueName("if_end"));
-            this.helper.builder.CreateBr(ifEnd);
-        }
 
-        if (ifEnd) {
+        if (ifEnd && (!trueReturned || !ifFalseReturned)) {
             this.helper.builder.SetInsertPoint(ifEnd);
+        } else if (ifEnd && trueReturned && ifFalseReturned) {
+            ifEnd.eraseFromParent();
         }
     }
 }
