@@ -3,6 +3,7 @@ node_modules
 out.exe
 out.ll
 out.s
+out.o
 ast.json
 tcAst.json
 tok.json

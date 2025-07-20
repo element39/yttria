@@ -123,7 +123,7 @@ export class LLVMGen extends Codegen {
         const fn = this.helper.fn(
             name,
             returnType,
-            "internal"
+            "external"
         );
 
         this.pushScope();

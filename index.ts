@@ -2,6 +2,7 @@ import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { Typechecker } from "./src/typechecker"
+// error driven development right here
 
 // const program = `
 // fn fib(n: int) -> int {
@@ -67,4 +68,35 @@ const llTime = performance.now()
 
 console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1000).toFixed(3)}KB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms`)
 
-console.log(`total time: ${(typecheckTime - start).toFixed(3)}ms`)
+const llc = Bun.spawnSync(["llc", "-filetype=obj", "out.ll", "-o", "out.o"])
+if (llc.exitCode !== 0) {
+    console.error("llc failed with exit code", llc.exitCode)
+    if (llc.stdout) console.error("stdout:", llc.stdout.toString())
+    //@ts-ignore
+    if (llc.stderr) console.error("stderr:", llc.stderr.toString())
+    process.exit(1)
+}
+
+// Link to executable (Windows: out.exe, Linux/macOS: out)
+const linker = Bun.spawnSync([
+    "clang", "out.o", "-o", process.platform === "win32" ? "out.exe" : "out",
+])
+if (linker.exitCode !== 0) {
+    console.error("linker failed with exit code", linker.exitCode)
+    if (linker.stdout) console.error("stdout:", linker.stdout.toString())
+    //@ts-ignore
+    if (linker.stderr) console.error("stderr:", linker.stderr.toString())
+    process.exit(2)
+}
+
+const exeTime = performance.now()
+console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
+console.log(`total time: ${(exeTime - start).toFixed(3)}ms`)
+
+console.log("running...")
+const exe = Bun.spawnSync([
+    "./out"
+], {
+    stdout: "pipe",
+    stderr: "pipe"
+})
