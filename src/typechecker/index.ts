@@ -1,4 +1,4 @@
-import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast"
+import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
 import { CheckerSymbol } from "./types"
 
 export class Typechecker {
@@ -22,6 +22,7 @@ export class Typechecker {
         FunctionDeclaration:  this.checkFunctionDeclaration.bind(this),
         IfExpression:         this.checkIfExpression.bind(this),
         ElseExpression:       this.checkElseExpression.bind(this),
+        WhileExpression:      this.checkWhileExpression.bind(this),
         Identifier:           this.checkIdentifier.bind(this),
         BinaryExpression:     this.checkBinaryExpression.bind(this),
         PreUnaryExpression:   this.checkPreUnaryExpression.bind(this),
@@ -325,6 +326,21 @@ export class Typechecker {
         const body = expr.body.map(s => this.checkExpression(s))
         this.popScope()
         return { ...expr, body } as ElseExpression
+    }
+
+    private checkWhileExpression(expr: WhileExpression): Expression {
+        const condition = this.checkExpression(expr.condition)
+        const conditionType = this.inferTypeFromValue(condition)
+
+        if (conditionType.type !== "bool") {
+            throw new Error(`While condition must be boolean, got ${conditionType.type}`)
+        }
+
+        this.pushScope()
+            const body = expr.body.map((s) => this.checkExpression(s))
+        this.popScope()
+
+        return { ...expr, condition, body } as WhileExpression
     }
 
     private checkBinaryExpression(expr: BinaryExpression): Expression {

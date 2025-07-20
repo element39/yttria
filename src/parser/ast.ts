@@ -18,6 +18,8 @@ export type ExpressionType =
     | "IfExpression"
     | "ElseExpression"
 
+    | "WhileExpression"
+
     | "BinaryExpression" // n > 1
     | "PreUnaryExpression" // -n
     | "PostUnaryExpression" // x++
@@ -71,6 +73,12 @@ export type IfExpression = Expression & {
 
 export type ElseExpression = Expression & {
     type: "ElseExpression"
+    body: Expression[]
+}
+
+export type WhileExpression = Expression & {
+    type: "WhileExpression"
+    condition: Expression
     body: Expression[]
 }
 

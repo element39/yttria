@@ -23,9 +23,20 @@ export type TokenType =
 
 export const Keywords = [
     "fn",
+    "return",
+
+    "switch",
+    "case",
+    "default",
+    
     "if",
     "else",
-    "return",
+
+    "while",
+    "for",
+    "break",
+    "continue",
+    
     "let",
     "const",
-]
+] as const

@@ -1,6 +1,5 @@
-import { Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, VariableDeclaration } from "./ast"
-
+import { Keywords, Token, TokenType } from "../lexer/token"
+import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -183,11 +182,13 @@ export class Parser {
     }
 
     private visitKeyword(t: Token): Expression | null {
-        switch (t.literal) {
+        switch (t.literal as typeof Keywords[number]) {
             case "fn":
                 return this.parseFunctionDeclaration()
             case "if":
                 return this.parseIfExpression()
+            case "while":
+                return this.parseWhileExpression()
             case "return":
                 return this.parseReturnExpression()
             case "let":
@@ -402,6 +403,21 @@ export class Parser {
         const body = this.parseBlock()
         return {
             type: "ElseExpression",
+            body
+        }
+    }
+
+    private parseWhileExpression(): WhileExpression {
+        console.log("Parsing while expression")
+        const condition = this.parseExpression(0, this.advance())
+        if (!condition) {
+            throw new Error("Expected condition after 'while'")
+        }
+        this.advance()
+        const body = this.parseBlock()
+        return {
+            type: "WhileExpression",
+            condition,
             body
         }
     }

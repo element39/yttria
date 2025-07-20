@@ -19,17 +19,11 @@ import { Typechecker } from "./src/typechecker"
 
 const program = `
 fn main() -> int {
-    const a := 5
-
-    if (a > 3) {
-        return 1
-    } else if (a < 2) {
-        return 2
-    } else if (a > 3) {
-        return 5
-    } else {
-        return 3
+    while (1 > 2) {
+        let x := 5
     }
+
+    return 5
 }
 `.trim()
 

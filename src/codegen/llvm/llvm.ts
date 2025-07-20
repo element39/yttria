@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration } from "../../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -13,6 +13,7 @@ export class LLVMGen extends Codegen {
         ReturnExpression: this.genReturnExpression.bind(this),
         VariableDeclaration: this.genVariableDeclaration.bind(this),
         IfExpression: this.genIfExpression.bind(this),
+        WhileExpression: this.genWhileExpression.bind(this),
     }
 
     types: { [key: string]: vm.Type } = {
@@ -246,6 +247,47 @@ export class LLVMGen extends Codegen {
             this.helper.builder.SetInsertPoint(ifEnd);
         } else if (ifEnd && trueReturned && ifFalseReturned) {
             ifEnd.eraseFromParent();
+        }
+    }
+
+    genWhileExpression(expr: WhileExpression): vm.Value | void {
+        const currentFn = this.helper.currentFunction;
+        if (!currentFn) throw new Error("no current function for while expression");
+
+        const parent = this.helper.builder.GetInsertBlock();
+        if (!parent) throw new Error("no current block for while expression");
+
+        const condBlock = this.helper.block("while_cond");
+        const loopBlock = this.helper.block("while_loop");
+        const endBlock = this.helper.block("while_end");
+
+        this.helper.builder.SetInsertPoint(parent);
+        this.helper.builder.CreateBr(condBlock);
+
+       this.helper.builder.SetInsertPoint(condBlock);
+
+        const condition = this.genExpression(expr.condition);
+        if (!condition) throw new Error("condition expression must return a value");
+        
+        this.helper.builder.CreateCondBr(condition, loopBlock, endBlock);
+        this.helper.builder.SetInsertPoint(loopBlock);
+        let loopReturned = false;
+        for (const e of expr.body) {
+            if (e.type in this.table) {
+                if (e.type === "ReturnExpression") loopReturned = true;
+                const fnGen = this.table[e.type];
+                fnGen && fnGen(e);
+            }
+        }
+        
+        if (!loopReturned) {
+            this.helper.builder.CreateBr(condBlock);
+        } else {
+            this.helper.builder.CreateBr(endBlock);
+        }
+        this.helper.builder.SetInsertPoint(endBlock);
+        if (loopReturned && endBlock.getTerminator()) {
+            endBlock.eraseFromParent();
         }
     }
 }

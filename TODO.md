@@ -60,4 +60,5 @@
 - [x] functions
 - [x] returns
 - [x] number literals
+- [x] if statements
 ...
