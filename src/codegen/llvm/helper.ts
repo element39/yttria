@@ -28,8 +28,8 @@ export class LLVMHelper {
         }
     }
 
-    fn(name: string, type: vm.FunctionType,linkage: "internal" | "external" = "internal"): vm.Function {
-        const fnTy = vm.FunctionType.get(type, [], false);
+    fn(name: string, type: vm.FunctionType, paramTypes: vm.Type[], linkage: "internal" | "external" = "internal"): vm.Function {
+        const fnTy = vm.FunctionType.get(type, paramTypes, false);
         const fn = vm.Function.Create(
             fnTy,
             linkage === "external"

@@ -20,13 +20,11 @@ import { Typechecker } from "./src/typechecker"
 
 const program = `
 fn main() -> int {
-    const c := true
-    while (c) {
-        // do something
-        const a := 1
-    }
+    return 0
+}
 
-    return 1
+fn fib(n: int) -> void {
+    return 5
 }
 `.trim()
 
@@ -68,7 +66,7 @@ const llTime = performance.now()
 
 console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1000).toFixed(3)}KB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms`)
 
-const llc = Bun.spawnSync(["llc", "-filetype=obj", "out.ll", "-o", "out.o"])
+const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s"])
 if (llc.exitCode !== 0) {
     console.error("llc failed with exit code", llc.exitCode)
     if (llc.stdout) console.error("stdout:", llc.stdout.toString())
@@ -79,7 +77,7 @@ if (llc.exitCode !== 0) {
 
 // Link to executable (Windows: out.exe, Linux/macOS: out)
 const linker = Bun.spawnSync([
-    "clang", "out.o", "-o", process.platform === "win32" ? "out.exe" : "out",
+    "clang", "out.s", "-o", process.platform === "win32" ? "out.exe" : "out",
 ])
 if (linker.exitCode !== 0) {
     console.error("linker failed with exit code", linker.exitCode)

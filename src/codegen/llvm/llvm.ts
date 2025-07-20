@@ -123,12 +123,23 @@ export class LLVMGen extends Codegen {
         const fn = this.helper.fn(
             name,
             returnType,
+            expr.params.map(p => this.types[p.paramType.value]),
             "external"
         );
 
         this.pushScope();
 
-        // TODO: handle function parameters here
+        for (const [i, p] of expr.params.entries()) {
+            const name = p.name.value;
+            const ty = this.types[p.paramType.value];
+            if (!ty) {
+                throw new Error(`Unknown parameter type: ${p.paramType.value}`);
+            }
+
+            // this.helper.variable(name, ty);
+            const { alloca } = this.helper.variable(name, ty, fn.getArg(i));
+            this.setVariable(name, alloca);
+        }
 
         this.helper.block("entry", () => {
             let returned = false;
