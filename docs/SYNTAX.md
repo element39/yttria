@@ -28,19 +28,26 @@ yttria's syntax is designed to be expressive, concise, and easy to read. It draw
 ```
 
 ### types
-yttria is a statically-typed language, meaning types are checked at compile time. Types can be inferred or explicitly declared, it is good practice to let the compiler infer types where possible, unlike languages like C or Rust, yttria does not require explicit type annotations for every variable or function.
+yttria is a statically-typed language, meaning types are checked at compile time. Types can be inferred or explicitly declared, it is recommended to let the compiler infer types where possible, unlike languages like C or Rust, yttria does not require explicit type annotations for every variable or function.
 
 ```ts
 // basic types
-int // 32-bit signed integer
-i_ // where _ is the bit size (e.g., i64 for 64-bit signed integer)
+int // 32-bit signed integer, hard alias to i32
+i1 // 1-bit signed integer
+i8 // 8-bit signed integer
+i16 // 16-bit signed integer
+i32 // 32-bit signed integer
+i64 // 64-bit signed integer
 
 float // 64-bit floating point number
-f_ // where _ is the bit size (e.g., f32 for 32-bit floating point number)
+f32 // 32-bit floating point number
+f64 // 64-bit floating point number
 
-bool // boolean (true or false)
+bool // boolean, hard alias to i1
+
 string // utf8 string
-rune // 1 utf8 character
+rune // single utf8 character
+
 null // null value (yttria is an expressive language, so null is still a value)
 
 // composite types
@@ -392,4 +399,51 @@ let numbers := [1, 2, 3, 4, 5]
 for (let number in numbers) {
     io.println(number) // 1, 2, 3, 4, 5
 }
+```
+
+### FFI
+yttria supports Foreign Function Interface (FFI), which allows you to leverage existing libraries written in other languages like C or Rust. This is useful for performance-critical code or when you want to use existing libraries without rewriting them in yttria. Here is an example with raylib
+
+```rs
+// raylib_bindings.yt
+use ffi/raylib; // raylib.dll / libraylib.so (depending on your OS) in root directory
+
+struct Color {
+    let r: u8
+    let g: u8
+    let b: u8
+    let a: u8
+}
+
+foreign fn InitWindow(width: int, height: int, title: string) -> void
+foreign fn WindowShouldClose() -> bool
+foreign fn CloseWindow() -> void
+foreign fn BeginDrawing() -> void
+foreign fn EndDrawing() -> void
+foreign fn ClearBackground(color: Color) -> void
+foreign fn DrawText(text: string, posX: int, posY: int, fontSize: int, color: Color) -> void
+
+// main.yt
+use path/to/raylib_bindings as r
+
+fn main() {
+    r.InitWindow(800, 600, "Hello Raylib")
+    
+    while (!r.WindowShouldClose()) {
+        r.BeginDrawing()
+        r.ClearBackground(r.Color { r: 0, g: 0, b: 0, a: 255 })
+        r.DrawText("Hello, Raylib!", 10, 10, 20, r.Color { r: 255, g: 255, b: 255, a: 255 })
+        r.EndDrawing()
+    }
+    
+    r.CloseWindow()
+}
+```
+
+### External
+yttria supports external functions, which are functions that are provided at link-time, unlike FFI, which natively links to libraries at compile time. External functions can be used to call functions from other yttria modules or from external libraries.
+
+```rs
+extern fn printf(fmt: string, ...) -> int // from C standard library
+extern fn writeln(msg: string) -> void // from D standard library
 ```

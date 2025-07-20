@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
+import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -19,6 +19,7 @@ export class LLVMGen extends Codegen {
     types: { [key: string]: vm.Type } = {
         "int": vm.Type.getInt32Ty(this.helper.context),
         "void": vm.Type.getVoidTy(this.helper.context),
+        "bool": vm.Type.getInt1Ty(this.helper.context),
     };
     
     private pushScope() {
@@ -57,6 +58,9 @@ export class LLVMGen extends Codegen {
             case "NumberLiteral":
                 const n = expr as NumberLiteral;
                 return this.helper.builder.getInt32(n.value);
+            case "BooleanLiteral":
+                const bl = expr as BooleanLiteral;
+                return this.helper.builder.getInt1(bl.value);
             case "Identifier":
                 const name = (expr as Identifier).value;
                 const ptr = this.getVariable(name);
@@ -250,44 +254,35 @@ export class LLVMGen extends Codegen {
         }
     }
 
-    genWhileExpression(expr: WhileExpression): vm.Value | void {
+    genWhileExpression(expr: WhileExpression): vm.BasicBlock {
         const currentFn = this.helper.currentFunction;
         if (!currentFn) throw new Error("no current function for while expression");
 
         const parent = this.helper.builder.GetInsertBlock();
         if (!parent) throw new Error("no current block for while expression");
 
-        const condBlock = this.helper.block("while_cond");
-        const loopBlock = this.helper.block("while_loop");
-        const endBlock = this.helper.block("while_end");
+        const whileCond = this.helper.block("while_cond");
+        const whileBody = this.helper.block("while_body");
+        const whileEnd = this.helper.block("while_end");
 
         this.helper.builder.SetInsertPoint(parent);
-        this.helper.builder.CreateBr(condBlock);
+        this.helper.builder.CreateBr(whileCond);
 
-       this.helper.builder.SetInsertPoint(condBlock);
+        this.helper.builder.SetInsertPoint(whileCond);
+        const cond = this.genExpression(expr.condition);
+        if (!cond) throw new Error("condition expression must return a value");
+        this.helper.builder.CreateCondBr(cond, whileBody, whileEnd);
 
-        const condition = this.genExpression(expr.condition);
-        if (!condition) throw new Error("condition expression must return a value");
-        
-        this.helper.builder.CreateCondBr(condition, loopBlock, endBlock);
-        this.helper.builder.SetInsertPoint(loopBlock);
-        let loopReturned = false;
+        this.helper.builder.SetInsertPoint(whileBody);
         for (const e of expr.body) {
             if (e.type in this.table) {
-                if (e.type === "ReturnExpression") loopReturned = true;
                 const fnGen = this.table[e.type];
                 fnGen && fnGen(e);
             }
         }
-        
-        if (!loopReturned) {
-            this.helper.builder.CreateBr(condBlock);
-        } else {
-            this.helper.builder.CreateBr(endBlock);
-        }
-        this.helper.builder.SetInsertPoint(endBlock);
-        if (loopReturned && endBlock.getTerminator()) {
-            endBlock.eraseFromParent();
-        }
+        this.helper.builder.CreateBr(whileCond);
+
+        this.helper.builder.SetInsertPoint(whileEnd);
+        return whileEnd;
     }
 }
