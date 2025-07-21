@@ -20,11 +20,11 @@ import { Typechecker } from "./src/typechecker"
 
 const program = `
 fn main() -> int {
-    return 0
+    return double(9)
 }
 
-fn fib(n: int) -> void {
-    return 5
+fn double(n: int) -> int {
+    return n * 2
 }
 `.trim()
 
@@ -89,7 +89,7 @@ if (linker.exitCode !== 0) {
 
 const exeTime = performance.now()
 console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
-console.log(`total time: ${(exeTime - start).toFixed(3)}ms`)
+console.log(`total compilation time: ${(exeTime - start).toFixed(3)}ms\n`)
 
 console.log("running...")
 const exe = Bun.spawnSync([
@@ -98,3 +98,9 @@ const exe = Bun.spawnSync([
     stdout: "pipe",
     stderr: "pipe"
 })
+
+console.log(`exit code: ${exe.exitCode}`)
+
+const run = performance.now()
+console.log(`total run time: ${(performance.now() - run).toFixed(3)}ms\n`)
+console.log(`total time: ${(run - start).toFixed(3)}ms`)

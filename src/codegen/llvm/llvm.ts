@@ -1,15 +1,14 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
+import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
     helper: LLVMHelper = new LLVMHelper();
-
     scope: Record<string, vm.Value>[] = [{}];
 
     table: { [key in ExpressionType]?: (expr: any) => vm.Function | vm.Value | void } = {
-        FunctionDeclaration: this.genFunctionDeclaration.bind(this),
+        FunctionCall: this.genFunctionCall.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
         VariableDeclaration: this.genVariableDeclaration.bind(this),
         IfExpression: this.genIfExpression.bind(this),
@@ -45,15 +44,98 @@ export class LLVMGen extends Codegen {
 
     generate(): string {
         for (const expr of this.ast.body) {
-            if (expr.type in this.table) {
-                const fn = this.table[expr.type];
-                fn && fn(expr);
+            if (expr.type === "FunctionDeclaration") {
+                this.declareFunctionSignature(expr as FunctionDeclaration);
             }
         }
+        
+        for (const expr of this.ast.body) {
+            if (expr.type === "FunctionDeclaration") {
+                this.genFunctionDeclaration(expr as FunctionDeclaration);
+            }
+        }
+
+        for (const expr of this.ast.body) {
+            if (expr.type in this.table) {
+                const fnGen = this.table[expr.type];
+                if (fnGen) fnGen(expr);
+            }
+        }
+        
         return this.helper.print();
     }
 
-    genExpression(expr: Expression): vm.Value | null {
+    declareFunctionSignature(expr: FunctionDeclaration): vm.Function {
+        const name = expr.name.value;
+        const ty = expr.returnType?.value || expr.resolvedReturnType?.type;
+        if (!ty || !(ty in this.types)) {
+            throw new Error(`Unknown return type: ${ty}`);
+        }
+        const returnType = this.types[ty];
+        
+        return this.helper.fn(
+            name,
+            returnType,
+            expr.params.map(p => this.types[p.paramType.value]),
+            "external"
+        );
+    }
+
+    generateFunctionBody(expr: FunctionDeclaration): vm.Function {
+        const name = expr.name.value;
+        const fn = this.helper.module.getFunction(name);
+        if (!fn) {
+            throw new Error(`Function "${name}" not found in module`);
+        }
+        this.helper.currentFunction = fn;
+        this.pushScope();
+
+        this.helper.block("entry", () => {
+            for (const [i, p] of expr.params.entries()) {
+                const name = p.name.value;
+                const ty = this.types[p.paramType.value];
+                if (!ty) {
+                    throw new Error(`Unknown parameter type: ${p.paramType.value}`);
+                }
+
+                const alloca = this.helper.alloc(name, ty);
+                const arg = fn.getArg(i);
+                this.helper.builder.CreateStore(arg, alloca);
+                this.setVariable(name, alloca);
+            }
+            
+            let returned = false;
+
+            for (const e of expr.body) {
+                if (e.type in this.table) {
+                    if (e.type === "ReturnExpression") returned = true;
+                    const fnGen = this.table[e.type];
+                    fnGen && fnGen(e);
+                }
+            }
+
+            if (!returned && fn.getReturnType().isVoidTy()) {
+                this.helper.builder.CreateRetVoid();
+            }
+        });
+
+        this.popScope();
+
+        this.helper.verify(fn);
+        return fn;
+    }
+
+    genFunctionDeclaration(expr: FunctionDeclaration): vm.Function {
+        const fn = this.helper.module.getFunction(expr.name.value);
+        if (fn) {
+            return this.generateFunctionBody(expr);
+        } else {
+            const fn = this.declareFunctionSignature(expr);
+            return this.generateFunctionBody(expr);
+        }
+    }
+
+    genExpression(expr: Expression): vm.Function | vm.Value | void {
         switch (expr.type) {
             case "NumberLiteral":
                 const n = expr as NumberLiteral;
@@ -110,57 +192,35 @@ export class LLVMGen extends Codegen {
                         throw new Error(`Unknown binary operator: ${b.operator}`);
                 }
         }
-        return null;
+
+        const tbl = this.table[expr.type];
+        if (tbl) return tbl(expr)
+
+        return;
     }
 
-    genFunctionDeclaration(expr: FunctionDeclaration): vm.Function {
-        const name = expr.name.value;
-        const ty = expr.returnType?.value || expr.resolvedReturnType?.type;
-        if (!ty || !(ty in this.types)) {
-            throw new Error(`Unknown return type: ${ty}`);
-        }
-        const returnType = this.types[ty];
-        const fn = this.helper.fn(
-            name,
-            returnType,
-            expr.params.map(p => this.types[p.paramType.value]),
-            "external"
-        );
-
-        this.pushScope();
-
-        for (const [i, p] of expr.params.entries()) {
-            const name = p.name.value;
-            const ty = this.types[p.paramType.value];
-            if (!ty) {
-                throw new Error(`Unknown parameter type: ${p.paramType.value}`);
-            }
-
-            // this.helper.variable(name, ty);
-            const { alloca } = this.helper.variable(name, ty, fn.getArg(i));
-            this.setVariable(name, alloca);
+    genFunctionCall(expr: FunctionCall): vm.Value | void {
+        const callee = expr.callee.value;
+        const fn = this.helper.module.getFunction(callee);
+        if (!fn) {
+            throw new Error(`Function "${callee}" not found`);
         }
 
-        this.helper.block("entry", () => {
-            let returned = false;
-
-            for (const e of expr.body) {
-                if (e.type in this.table) {
-                    if (e.type === "ReturnExpression") returned = true;
-                    const fnGen = this.table[e.type];
-                    fnGen && fnGen(e);
-                }
+        const args: vm.Value[] = [];
+        for (const arg of expr.args) {
+            const value = this.genExpression(arg);
+            if (!value) {
+                throw new Error(`Invalid argument for function call: ${arg.type}`);
             }
+            args.push(value);
+        }
 
-            if (!returned && returnType.isVoidTy()) {
-                this.helper.builder.CreateRetVoid();
-            }
-        });
+        if (fn.getReturnType().isVoidTy()) {
+            this.helper.builder.CreateCall(fn, args);
+            return;
+        }
 
-        this.popScope();
-
-        this.helper.verify(fn);
-        return fn;
+        return this.helper.builder.CreateCall(fn, args, `${callee}_result`);
     }
 
     genReturnExpression(expr: ReturnExpression): vm.Function {
@@ -172,6 +232,7 @@ export class LLVMGen extends Codegen {
             this.helper.builder.CreateRetVoid();
             return this.helper.currentFunction;
         }
+        
         if (!value) {
             throw new Error(`return expression type unhandled, got ${expr.value.type}`);
         }
