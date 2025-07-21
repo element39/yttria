@@ -43,7 +43,7 @@
 
 ## why yttria?
 
-yttria is designed to be a **fast, expressive language** that lets you build anything from scripts to systems.  
+yittria ([/ˈjɪtʃ.ri.ə/](https://ipa-reader.com/?text=%2F%CB%88j%C9%AAt%CA%83.ri.%C9%99%2F), pronounced `yi-tch-ria`) is a **fast, expressive language** that lets you build anything from scripts to systems.  
 It combines the **performance of C** with the **expressiveness of Typescript**, making it ideal for both beginners and experienced developers.
 Whether you're building web apps, games, or low-level systems, yttria has you covered.
 
@@ -80,4 +80,4 @@ yttria includes a wide range of features to help you build robust applications:
 ## community
 you can find us on:
 - [github](https://github.com/grngxd/yttria)
-...
+- [twitter](https://twitter.com/grngxd)
