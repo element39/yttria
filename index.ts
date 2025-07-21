@@ -4,27 +4,17 @@ import { Parser } from "./src/parser"
 import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
-// const program = `
-// fn fib(n: int) -> int {
-//     if (n <= 1) {
-//         return n
-//     }
-    
-//     return fib(n - 1) + fib(n - 2)
-// }
-
-// fn main() -> int {
-//     return fib(5)
-// }
-// `.trim()
-
 const program = `
-fn main() -> int {
-    return double(9)
+fn fib(n: int) -> int {
+    if (n <= 1) {
+        return n
+    }
+    
+    return fib(n - 1) + fib(n - 2)
 }
 
-fn double(n: int) -> int {
-    return n * 2
+fn main() -> int {
+    return fib(12) // returns 144!!!!!!!!! im so goated
 }
 `.trim()
 
@@ -64,9 +54,10 @@ Bun.write("out.ll", ll)
 
 const llTime = performance.now()
 
-console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1000).toFixed(3)}KB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms`)
+console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1024).toFixed(3)}kB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms\n`)
 
-const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s"])
+console.log("compiling to executable...")
+const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s", "-O3"])
 if (llc.exitCode !== 0) {
     console.error("llc failed with exit code", llc.exitCode)
     if (llc.stdout) console.error("stdout:", llc.stdout.toString())
@@ -88,7 +79,7 @@ if (linker.exitCode !== 0) {
 }
 
 const exeTime = performance.now()
-console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
+console.log(`(${(Bun.file(process.platform === "win32" ? "out.exe" : "out").size / 1024).toFixed(3)}kB) compiled in ${(exeTime - llTime).toFixed(3)}ms`)
 console.log(`total compilation time: ${(exeTime - start).toFixed(3)}ms\n`)
 
 console.log("running...")

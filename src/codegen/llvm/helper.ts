@@ -13,19 +13,19 @@ export class LLVMHelper {
     }
 
     verify(v?: vm.Function): vm.Function | vm.Module | null {
-        // if (v instanceof vm.Function) {
-        //     if (vm.verifyFunction(v)) {
-        //         throw new Error(`Function verification failed: ${v.getName()}`)
-        //     }
+        if (v instanceof vm.Function) {
+            if (vm.verifyFunction(v)) {
+                throw new Error(`Function verification failed: ${v.getName()}`)
+            }
 
-        //     return v;
-        // }
+            return v;
+        }
         
-        // if (vm.verifyModule(this.module)) {
-        //     throw new Error(`Module verification failed: ${this.module.getName()}`)
-        // } else {
-        //     return this.module;
-        // }
+        if (vm.verifyModule(this.module)) {
+            throw new Error(`Module verification failed: ${this.module.getName()}`)
+        } else {
+            return this.module;
+        }
     }
 
     fn(name: string, type: vm.FunctionType, paramTypes: vm.Type[], linkage: "internal" | "external" = "internal"): vm.Function {
