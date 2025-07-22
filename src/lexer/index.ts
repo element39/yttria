@@ -127,7 +127,7 @@ export class Lexer {
 
 
             // delimiters
-            if (["(", ")", "{", "}", ",", ";", ":"].includes(char)) {
+            if (["(", ")", "{", "}", ",", ";", ":", "."].includes(char)) {
                 this.tokens.push({
                     type: "Delimiter",
                     literal: char

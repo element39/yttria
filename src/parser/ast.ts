@@ -9,6 +9,7 @@ export type ExpressionType =
     | "Program"
 
     | "Identifier"
+    | "MemberAccess"
 
     | "FunctionDeclaration"
     | "FunctionParam"
@@ -44,6 +45,13 @@ export type ProgramExpression = Expression & {
 export type Identifier = Expression & {
     type: "Identifier"
     value: string
+}
+
+// foo.bar.baz or foo.bar() etc
+export type MemberAccess = Expression & {
+    type: "MemberAccess"
+    object: Expression
+    property: Expression
 }
 
 export type FunctionDeclaration = Expression & {

@@ -5,18 +5,9 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-// exit code should be 1
-fn main() {
-    const s := 2
+foo.bar(5).baz
 
-    switch (s) {
-        2       -> { return 1 }
-        3       -> { return 2 }
-        default -> { return 3 }
-    }
-
-    return 4
-}
+baz((5 + 3)).bar
 `.trim()
 
 const start = performance.now()

@@ -1,5 +1,5 @@
 import { Keywords, Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -56,31 +56,82 @@ export class Parser {
 
     private parseExpression(precedence = 0, tok?: Token): Expression | null {
         let left = this.parsePrimary(tok)
+        if (!left) return null;
 
-        // x++
-        while (this.peek().type === "Operator" && (this.peek().literal === "++" || this.peek().literal === "--")) {
-            const op = this.peek();
-            this.advance();
-            left = {
-                type: "PostUnaryExpression",
-                operator: op.literal,
-                operand: left
-            } as PostUnaryExpression;
-        }
+        while (true) {
+            if (this.peek().type === "Operator" && 
+                (this.peek().literal === "++" || this.peek().literal === "--")) {
+                const op = this.peek();
+                this.advance();
+                left = {
+                    type: "PostUnaryExpression",
+                    operator: op.literal,
+                    operand: left
+                } as PostUnaryExpression;
+            }
 
-        // x + y / z
-        while (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
-            const op = this.peek()
-            this.advance()
-            const right = this.parseExpression(this.getPrecedence(op))
-            if (!right) return null
-            
-            left = {
-                type: "BinaryExpression",
-                left,
-                operator: op.literal,
-                right
-            } as BinaryExpression
+            else if (this.peek().literal === ".") {
+                this.advance();
+                if (this.peek().type !== "Identifier") {
+                    throw new Error("Expected identifier after '.'");
+                }
+                const property = {
+                    type: "Identifier",
+                    value: this.peek().literal
+                } as Identifier;
+                this.advance();
+                
+                left = {
+                    type: "MemberAccess",
+                    object: left,
+                    property
+                } as MemberAccess;
+            }
+
+            else if (this.peek().literal === "(") {
+                this.advance();
+                const args: Expression[] = [];
+                
+                if (this.peek().literal !== ")") {
+                    while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
+                        const arg = this.parseExpression();
+                        if (!arg) throw new Error("Expected expression in function call");
+                        args.push(arg);
+                        
+                        if (this.peek().literal === ",") {
+                            this.advance();
+                        }
+                    }
+                }
+                
+                if (this.peek().literal !== ")") {
+                    throw new Error("Expected ')' to close function call");
+                }
+                this.advance();
+                
+                left = {
+                    type: "FunctionCall",
+                    callee: left,
+                    args
+                } as FunctionCall;
+            }
+
+            else if (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
+                const op = this.peek();
+                this.advance();
+                const right = this.parseExpression(this.getPrecedence(op));
+                if (!right) return null;
+                
+                left = {
+                    type: "BinaryExpression",
+                    left,
+                    operator: op.literal,
+                    right
+                } as BinaryExpression;
+            }
+            else {
+                break;
+            }
         }
 
         return left
@@ -149,36 +200,11 @@ export class Parser {
         }
     }
 
-    private visitIdentifier(t: Token): Identifier | FunctionCall {
-        if (this.peek().literal === "(") {
-            this.advance()
-            const args: Expression[] = []
-
-            if (this.peek().literal !== ")") {
-                while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
-                    const arg = this.parseExpression()
-                    if (!arg) throw new Error("Expected expression in function call arguments")
-                    args.push(arg)
-
-                    if (this.peek().literal === ",") {
-                        this.advance()
-                    }
-                }
-            }
-
-            this.advance()
-
-            return {
-                type: "FunctionCall",
-                callee: this.visitIdentifier(t) as Identifier,
-                args
-            } as FunctionCall
-        }
-
+    private visitIdentifier(t: Token): Identifier {
         return {
             type: "Identifier",
             value: t.literal
-        }
+        };
     }
 
     private visitKeyword(t: Token): Expression | null {
