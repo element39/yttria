@@ -1,4 +1,4 @@
-import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
+import { BinaryExpression, CaseExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
 import { CheckerSymbol, CheckerType } from "./types"
 
 export class Typechecker {
@@ -25,6 +25,7 @@ export class Typechecker {
         FunctionDeclaration:  this.checkFunctionDeclaration.bind(this),
         IfExpression:         this.checkIfExpression.bind(this),
         ElseExpression:       this.checkElseExpression.bind(this),
+        SwitchExpression:     this.parseSwitchExpression.bind(this),
         WhileExpression:      this.checkWhileExpression.bind(this),
         Identifier:           this.checkIdentifier.bind(this),
         BinaryExpression:     this.checkBinaryExpression.bind(this),
@@ -370,6 +371,29 @@ export class Typechecker {
         this.popScope()
 
         return { ...expr, condition, body } as WhileExpression
+    }
+
+    private parseSwitchExpression(expr: SwitchExpression): Expression {
+        const value = this.checkExpression(expr.value);
+        const valueType = this.inferTypeFromValue(value);
+
+        if (valueType.type === "null") {
+            throw new Error("Switch expression cannot switch on null");
+        }
+
+        const cases: CaseExpression[] = [];
+        for (const caseExpr of expr.cases) {
+            const value = caseExpr.value === "default" ? "default" : this.checkExpression(caseExpr.value);
+            const body = caseExpr.body.map(s => this.checkExpression(s));
+
+            if (value !== "default" && this.inferTypeFromValue(value).type !== valueType.type) {
+                throw new Error(`Case value type mismatch: expected ${valueType.type}, got ${this.inferTypeFromValue(value).type}`);
+            }
+
+            cases.push({ ...caseExpr, value, body } as CaseExpression);
+        }
+
+        return { ...expr, value, cases } as SwitchExpression;
     }
 
     private checkBinaryExpression(expr: BinaryExpression): Expression {

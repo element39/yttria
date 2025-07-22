@@ -6,19 +6,20 @@
 ## roadmap
 
 > [!NOTE]
-> this roadmap is subject to change and may be innacurate/outdated at any time
+> this roadmap is subject to change and might be innacurate/outdated at any time,
 > please refer to the [status report](#status-report) for the most up-to-date information
 
 <!-- https://ascii.bar -->
 
 ### language core
+current version: `v0.0.2-alpha.1`
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
-  lexer             85%      ███████████▒░      no eta
-  parser            80%      ██████████▒░░      no eta
-  typechecker       65%      ████████▒░░░░      1 week
-  codegen           5%       ▒░░░░░░░░░░░░      2-3 weeks
+  lexer             95%      ████████████▒      complete soon
+  parser            90%      ███████████▓░      complete soon
+  typechecker       80%      ██████████▒░░      complete soon
+  codegen           40%      █████▒░░░░░░░      2-3 weeks
 ```
 
 ### std
@@ -41,6 +42,6 @@
 ```
 
 ## status report
-> last updated: 17/7/2025 (dd/mm/yyyy)
+> last updated: 22/7/2025 (dd/mm/yyyy)
 
-yttria is currently in early development, with the lexer and parser being mostly complete, the typechecker is almost fully implemented, and codegen is partially implemented.
+yttria is still in early development; lexer and parser are nearly finished, typechecker is close to complete, and codegen supports core features but advanced features are still in progress.

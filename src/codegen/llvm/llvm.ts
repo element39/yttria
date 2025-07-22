@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, StringLiteral, VariableDeclaration, WhileExpression } from "../../parser/ast";
+import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -13,6 +13,7 @@ export class LLVMGen extends Codegen {
         VariableDeclaration: this.genVariableDeclaration.bind(this),
         IfExpression: this.genIfExpression.bind(this),
         WhileExpression: this.genWhileExpression.bind(this),
+        SwitchExpression: this.genSwitchExpression.bind(this),
     }
 
     types: { [key: string]: vm.Type } = {
@@ -369,5 +370,63 @@ export class LLVMGen extends Codegen {
 
         this.helper.builder.SetInsertPoint(whileEnd);
         return whileEnd;
+    }
+
+    // TODO: strings wont work bcz technically pointers are different
+    genSwitchExpression(expr: SwitchExpression): vm.Value | void {
+        const currentFn = this.helper.currentFunction;
+        if (!currentFn) throw new Error("no current function for switch expression");
+
+        const switchValue = this.genExpression(expr.value);
+        if (!switchValue) throw new Error("switch value must return a value");
+
+        const parent = this.helper.builder.GetInsertBlock();
+        if (!parent) throw new Error("no current block for switch expression");
+
+        const end = this.helper.block("switch_end")
+
+        const caseBlocks = expr.cases.map((_, i) => this.helper.block(`switch_case_${i}`));
+        const condBlocks = expr.cases.map((_, i) => this.helper.block(`switch_cond_${i}`));
+        const defaultIdx = expr.cases.findIndex(c => c.value === "default");
+
+        this.helper.builder.SetInsertPoint(parent);
+        this.helper.builder.CreateBr(condBlocks[0]);
+
+        expr.cases.forEach((caseExpr, i) => {
+            this.helper.builder.SetInsertPoint(caseBlocks[i]);
+            for (const stmt of caseExpr.body) {
+                if (stmt.type in this.table) {
+                    const fnGen = this.table[stmt.type];
+                    fnGen && fnGen(stmt);
+                }
+            }
+
+            if (!caseBlocks[i].getTerminator()) {
+                this.helper.builder.CreateBr(end);
+            }
+        });
+        
+
+        expr.cases.forEach((caseExpr, i) => {
+            this.helper.builder.SetInsertPoint(condBlocks[i]);
+            const caseValue = caseExpr.value === "default" ? "default" : this.genExpression(caseExpr.value);
+            if (!caseValue) {
+                const valueType = caseExpr.value === "default" ? "default" : (caseExpr.value as Expression).type;
+                throw new Error(`case value must return a value, got ${valueType}`);
+            }
+
+            if (caseExpr.value === "default") {
+                this.helper.builder.CreateBr(caseBlocks[i]);
+                return;
+            }
+            
+            const eq = this.helper.builder.CreateICmpEQ(switchValue, caseValue as vm.Value, `case_cmp_${i}`);
+            this.helper.builder.CreateCondBr(eq, caseBlocks[i], i === defaultIdx ? end : condBlocks[i + 1]);
+            if (i === expr.cases.length - 1 && defaultIdx === -1) {
+                this.helper.builder.CreateBr(end);
+            }
+        });
+
+        this.helper.builder.SetInsertPoint(end);
     }
 }

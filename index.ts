@@ -5,8 +5,17 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-fn main() -> int {
-    return 5
+// exit code should be 1
+fn main() {
+    const s := 2
+
+    switch (s) {
+        2       -> { return 1 }
+        3       -> { return 2 }
+        default -> { return 3 }
+    }
+
+    return 4
 }
 `.trim()
 
@@ -70,10 +79,10 @@ if (linker.exitCode !== 0) {
 }
 
 const exeTime = performance.now()
-console.log(`(${(Bun.file(process.platform === "win32" ? "out.exe" : "out").size / 1024).toFixed(3)}kB) compiled in ${(exeTime - llTime).toFixed(3)}ms`)
+console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
 console.log(`total compilation time: ${(exeTime - start).toFixed(3)}ms\n`)
 
-console.log("running...")
+console.log("running...\n")
 const exe = Bun.spawnSync([
     "./out"
 ], {
@@ -81,7 +90,7 @@ const exe = Bun.spawnSync([
     stderr: "pipe"
 })
 
-console.log(`exit code: ${exe.exitCode}`)
+console.log(`\nexit code: ${exe.exitCode}`)
 
 const run = performance.now()
 console.log(`total run time: ${(performance.now() - run).toFixed(3)}ms\n`)

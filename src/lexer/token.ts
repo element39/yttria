@@ -26,7 +26,6 @@ export const Keywords = [
     "return",
 
     "switch",
-    "case",
     "default",
     
     "if",

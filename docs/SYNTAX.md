@@ -109,13 +109,26 @@ while (x < 10) {
 }
 
 switch (c) {
-    case 1:
-        io.println("c is 1")
-    case 2:
-        io.println("c is 2")
-    default:
+    case 1, 2 -> {
+        io.println("c is 1 or 2")
+    }
+    case 3 -> {
+        io.println("c is 3")
+    }
+    default -> {
         io.println("c is something else")
+    }
 }
+
+// commented out pre-0.0.2 syntax (no longer supported)
+// switch (c) {
+//     case 1:
+//         io.println("c is 1")
+//     case 2:
+//         io.println("c is 2")
+//     default:
+//         io.println("c is something else")
+// }
 ```
 
 ### error handling
@@ -136,11 +149,13 @@ try {
 ```
 
 ### modules
-yttria supports modules for organizing code. Modules can be imported using the `use` keyword, and can be aliased for convenience.
+yttria supports modules for organizing code. Modules can be imported using the `use` keyword, and can be aliased for convenience. Similar to Go, odules are folder based, so foo/baz.yt and foo/bar.yt are both part of the module `foo`, unlike JS's `import` syntax which is file-based.
+
 
 ```rs
 use std/io;
 use std/math as m;
+use std/*; // import all items from the std supermodule (not recommended for large modules, this increases filesize by a TON and can cause name clashes
 use std/time as .; // import into current module, so you can use `now()` instead of `time.now()`
 use std/http as _; // import without using, bypassing the "unused import" warning without commenting it out
 ```

@@ -1,5 +1,5 @@
 import { Keywords, Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, VariableDeclaration, WhileExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -182,19 +182,19 @@ export class Parser {
     }
 
     private visitKeyword(t: Token): Expression | null {
-        switch (t.literal as typeof Keywords[number]) {
-            case "fn":
-                return this.parseFunctionDeclaration()
-            case "if":
-                return this.parseIfExpression()
-            case "while":
-                return this.parseWhileExpression()
-            case "return":
-                return this.parseReturnExpression()
-            case "let":
-                return this.parseVariableDeclaration(true)
-            case "const":
-                return this.parseVariableDeclaration(false)
+        // turned switch into table :hooray:
+        const table: { [key in typeof Keywords[number]]?: () => Expression | null } = {
+            "fn": this.parseFunctionDeclaration.bind(this),
+            "if": this.parseIfExpression.bind(this),
+            "while": this.parseWhileExpression.bind(this),
+            "return": this.parseReturnExpression.bind(this),
+            "let": () => this.parseVariableDeclaration.bind(this)(true),
+            "const": () => this.parseVariableDeclaration.bind(this)(false),
+            "switch": this.parseSwitchExpression.bind(this),
+        }
+
+        if (t.literal in table) {
+            return table[t.literal as typeof Keywords[number]]!()
         }
 
         return null
@@ -345,7 +345,7 @@ export class Parser {
     private parseBlock(): Expression[] {
         const body: Expression[] = []
         if (this.peek().literal !== "{") {
-            throw new Error("Expected '{' to start function body")
+            throw new Error(`Expected "{" to start function body, got "${this.peek().literal}"`)
         }
 
         this.advance()
@@ -408,7 +408,6 @@ export class Parser {
     }
 
     private parseWhileExpression(): WhileExpression {
-        console.log("Parsing while expression")
         const condition = this.parseExpression(0, this.advance())
         if (!condition) {
             throw new Error("Expected condition after 'while'")
@@ -419,6 +418,63 @@ export class Parser {
             type: "WhileExpression",
             condition,
             body
+        }
+    }
+
+    private parseSwitchExpression(): SwitchExpression {
+        const value = this.parseExpression(0, this.advance())
+        if (!value) {
+            throw new Error("Expected value after 'switch'")
+        }
+
+        if (this.advance().literal !== "{") {
+            throw new Error("Expected '{' after switch value")
+        }
+        this.advance()
+
+        if (this.peek().literal === "}") {
+            this.advance()
+            return {
+                type: "SwitchExpression",
+                value,
+                cases: []
+            }
+        }
+
+        const cases: CaseExpression[] = []
+
+        while (this.peek().literal !== "}" && this.peek().type !== "EOF") {
+            let value: Expression | "default" = (() => {
+                if (this.peek().literal === "default") {
+                    this.advance()
+                    return "default"
+                }
+                const val = this.parseExpression(0)
+                if (!val) {
+                    throw new Error("Expected case value")
+                }
+                return val
+            })()
+
+            if (this.peek().literal !== "->") {
+                throw new Error("Expected '->' after case value")
+            }
+            this.advance()
+            
+            const body: Expression[] = this.parseBlock()
+            cases.push({
+                type: "CaseExpression",
+                value,
+                body
+            })
+        }
+
+        this.advance()
+
+        return {
+            type: "SwitchExpression",
+            value,
+            cases
         }
     }
 
