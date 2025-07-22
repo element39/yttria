@@ -8,6 +8,11 @@ export class Typechecker {
     // Keep your simple type representation
     types: Record<string, CheckerSymbol> = {
         int:    { type: "int" },
+        i8:     { type: "i8" },
+        i16:    { type: "i16" },
+        i32:    { type: "i32" },
+        i64:    { type: "i64" },
+
         float:  { type: "float" },
         string: { type: "string" },
         bool:   { type: "bool" },
@@ -81,18 +86,51 @@ export class Typechecker {
 
                 const op = (v as BinaryExpression).operator
                 
-                if (["+", "-", "*", "/"].includes(op)) {
-                    if (leftType.type === "int" && rightType.type === "int") {
-                        return this.types.int
-                    } else if (leftType.type === "float" || rightType.type === "float") {
-                        return this.types.float
+                // if (["+", "-", "*", "/"].includes(op)) {
+                //     if (leftType.type === "int" && rightType.type === "int") {
+                //         return this.types.int
+                //     } else if (leftType.type === "float" || rightType.type === "float") {
+                //         return this.types.float
+                //     }
+                // } else if (["==", "!=", "<", ">", "<=", ">="].includes(op)) {
+                //     if (leftType.type === rightType.type) {
+                //         return this.types.bool
+                //     }
+                // } else if (["&&", "||"].includes(op)) {
+                //     return this.types.bool
+                // }
+                const numericOps = ["+", "-", "*", "/"];
+                if (numericOps.includes(op)) {
+                    const validTypes = [
+                        "int",
+                        "i8",
+                        "i16",
+                        "i32",
+                        "i64",
+
+                        "float",
+                    ]
+
+                    if (!validTypes.includes(leftType.type) || !validTypes.includes(rightType.type)) {
+                        throw new Error(`Invalid types for operator "${op}": ${leftType.type} and ${rightType.type}`);
                     }
-                } else if (["==", "!=", "<", ">", "<=", ">="].includes(op)) {
-                    if (leftType.type === rightType.type) {
-                        return this.types.bool
+                
+                    if (leftType.type !== rightType.type) {
+                        throw new Error(`Cannot perform "${op}" on different types: ${leftType.type} and ${rightType.type}`);
                     }
-                } else if (["&&", "||"].includes(op)) {
-                    return this.types.bool
+
+                    return leftType;
+                }
+
+                const comparisonOps = ["==", "!=", "<", ">", "<=", ">="];
+                if (comparisonOps.includes(op)) {
+                    if (leftType.type !== rightType.type) {
+                        throw new Error(`Cannot compare different types: ${leftType.type} and ${rightType.type}`);
+                    }
+                    if (leftType.type === "null") {
+                        throw new Error(`Cannot compare null with "${op}"`);
+                    }
+                    return this.types.bool;
                 }
 
                 throw new Error(`Cannot infer type for binary expression with operator "${op}" and types "${leftType.type}" and "${rightType.type}"`)
@@ -350,26 +388,59 @@ export class Typechecker {
         const lType = this.inferTypeFromValue(left)
         const rType = this.inferTypeFromValue(right)
         
-        if (["+", "-", "*", "/"].includes(expr.operator)) {
-            if (lType.type !== "int" && lType.type !== "float") {
-                throw new Error(`Left operand for "${expr.operator}" must be a number, but got ${lType.type}`);
+        // if (["+", "-", "*", "/"].includes(expr.operator)) {
+        //     if (lType.type !== "int" && lType.type !== "float") {
+        //         throw new Error(`Left operand for "${expr.operator}" must be a number, but got ${lType.type}`);
+        //     }
+        //     if (rType.type !== "int" && rType.type !== "float") {
+        //         throw new Error(`Right operand for "${expr.operator}" must be a number, but got ${rType.type}`);
+        //     }
+        // }
+
+        // if (["==", "!=", "<", ">", "<=", ">="].includes(expr.operator)) {
+        //     if (lType.type !== rType.type) {
+        //         throw new Error(`Operands for "${expr.operator}" must be of the same type, but got ${lType.type} and ${rType.type}`);
+        //     }
+
+        //     if (lType.type === "null") {
+        //         throw new Error(`Cannot compare null with "${expr.operator}"`);
+        //     }
+        //     if (lType.type === "bool" && rType.type === "bool") {
+        //         return { ...expr, left, right } as BinaryExpression; // bool comparison
+        //     }
+        // }
+        const numericOps = ["+", "-", "*", "/"];
+        const comparisonOps = ["==", "!=", "<", ">", "<=", ">="];
+        if (numericOps.includes(expr.operator)) {
+            const validTypes = [
+                "int",
+                "i8",
+                "i16",
+                "i32",
+                "i64",
+
+                "float",
+            ]
+
+            if (!validTypes.includes(lType.type) || !validTypes.includes(rType.type)) {
+                throw new Error(`Invalid types for operator "${expr.operator}": ${lType.type} and ${rType.type}`);
             }
-            if (rType.type !== "int" && rType.type !== "float") {
-                throw new Error(`Right operand for "${expr.operator}" must be a number, but got ${rType.type}`);
+        
+            if (lType.type !== rType.type) {
+                throw new Error(`Cannot perform "${expr.operator}" on different types: ${lType.type} and ${rType.type}`);
             }
+
+            return { ...expr, left, right } as BinaryExpression;
         }
 
-        if (["==", "!=", "<", ">", "<=", ">="].includes(expr.operator)) {
+        if (comparisonOps.includes(expr.operator)) {
             if (lType.type !== rType.type) {
-                throw new Error(`Operands for "${expr.operator}" must be of the same type, but got ${lType.type} and ${rType.type}`);
+                throw new Error(`Cannot compare different types: ${lType.type} and ${rType.type}`);
             }
-
             if (lType.type === "null") {
                 throw new Error(`Cannot compare null with "${expr.operator}"`);
             }
-            if (lType.type === "bool" && rType.type === "bool") {
-                return { ...expr, left, right } as BinaryExpression; // bool comparison
-            }
+            return { ...expr, left, right } as BinaryExpression;
         }
 
         if (["&&", "||"].includes(expr.operator)) {

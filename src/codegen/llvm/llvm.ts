@@ -17,6 +17,16 @@ export class LLVMGen extends Codegen {
 
     types: { [key: string]: vm.Type } = {
         "int": vm.Type.getInt32Ty(this.helper.context),
+        "i8": vm.Type.getInt8Ty(this.helper.context),
+        "i16": vm.Type.getInt16Ty(this.helper.context),
+        "i32": vm.Type.getInt32Ty(this.helper.context),
+        "i64": vm.Type.getInt64Ty(this.helper.context),
+
+        "float": vm.Type.getFloatTy(this.helper.context),
+
+        "string": vm.Type.getInt8PtrTy(this.helper.context),
+        "char": vm.Type.getInt8Ty(this.helper.context),
+
         "void": vm.Type.getVoidTy(this.helper.context),
         "bool": vm.Type.getInt1Ty(this.helper.context),
     };

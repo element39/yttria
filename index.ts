@@ -13,6 +13,10 @@ fn fib(n: int) -> int {
     return fib(n - 1) + fib(n - 2)
 }
 
+fn add(b: i32, a: i32) -> i32 {
+    return a + b
+}
+
 fn main() -> int {
     return fib(12) // returns 144!!!!!!!!! im so goated
 }
