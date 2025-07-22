@@ -88,11 +88,12 @@ export class LLVMGen extends Codegen {
             name,
             returnType,
             expr.params.map(p => this.types[p.paramType.value]),
-            "external"
+            expr.modifiers.includes("pub") ? "external" : "internal"
         );
     }
 
-    generateFunctionBody(expr: FunctionDeclaration): vm.Function {
+    generateFunctionBody(expr: FunctionDeclaration): vm.Function | void {
+        if (expr.modifiers.includes("extern")) return;
         const name = expr.name.value;
         const fn = this.helper.module.getFunction(name);
         if (!fn) {
@@ -136,12 +137,19 @@ export class LLVMGen extends Codegen {
         return fn;
     }
 
-    genFunctionDeclaration(expr: FunctionDeclaration): vm.Function {
+    genFunctionDeclaration(expr: FunctionDeclaration): vm.Function | void {
         const fn = this.helper.module.getFunction(expr.name.value);
-        if (fn) {
-            return this.generateFunctionBody(expr);
-        } else {
+        // if (fn) {
+        //     return this.generateFunctionBody(expr);
+        // } else {
+        //     const fn = this.declareFunctionSignature(expr);
+        //     return this.generateFunctionBody(expr);
+        // }
+        if (!fn) {
             const fn = this.declareFunctionSignature(expr);
+            if (expr.modifiers.includes("extern")) return;
+            return this.generateFunctionBody(expr)
+        } else {
             return this.generateFunctionBody(expr);
         }
     }

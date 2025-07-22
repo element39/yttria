@@ -1,3 +1,4 @@
+import { Modifier } from "../lexer/token"
 import { CheckerSymbol } from "../typechecker/types"
 
 // yttria is an expressive language so statements are NOT allowed
@@ -61,6 +62,7 @@ export type FunctionDeclaration = Expression & {
     returnType?: Identifier
     resolvedReturnType?: CheckerSymbol
     body: Expression[]
+    modifiers: Modifier[]
 }
 
 export type FunctionCall = Expression & {

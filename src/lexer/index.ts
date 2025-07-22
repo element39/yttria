@@ -1,4 +1,4 @@
-import { Keywords, Token } from "./token"
+import { Keywords, Modifiers, MultiCharDelimiters, MultiCharOperators, SingleCharDelimiters, SingleCharOperators, Token } from "./token"
 
 export class Lexer {
     tokens: Token[] = []
@@ -116,7 +116,7 @@ export class Lexer {
             const two = char + this.peek()
 
             // multi-char delimiters
-            if ([":="].includes(two)) {
+            if (MultiCharDelimiters.includes(two)) {
                 this.tokens.push({
                     type: "Delimiter",
                     literal: two
@@ -127,7 +127,7 @@ export class Lexer {
 
 
             // delimiters
-            if (["(", ")", "{", "}", ",", ";", ":", "."].includes(char)) {
+            if (SingleCharDelimiters.includes(char)) {
                 this.tokens.push({
                     type: "Delimiter",
                     literal: char
@@ -136,9 +136,7 @@ export class Lexer {
             }
 
             // multi-char operators
-            if ([
-                "==", "!=", "<=", ">=", "->", "=>", "&&", "||", "++", "--", "+=", "-=", "*=", "/="
-            ].includes(two)) {
+            if (MultiCharOperators.includes(two)) {
                 this.tokens.push({
                     type: "Operator",
                     literal: two
@@ -148,7 +146,7 @@ export class Lexer {
             }
 
             // single-char operators
-            if (["<", ">", "!", "=", "+", "-", "*", "/", "&", "|"].includes(char)) {
+            if (SingleCharOperators.includes(char)) {
                 this.tokens.push({
                     type: "Operator",
                     literal: char
@@ -221,7 +219,7 @@ export class Lexer {
 
                 this.tokens.push({
                     // @ts-expect-error
-                    type: (Keywords.includes(literal) ? "Keyword" : "Identifier"),
+                    type: ((Keywords.includes(literal) || Modifiers.includes(literal)) ? "Keyword" : "Identifier"),
                     literal
                 })
 

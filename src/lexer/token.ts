@@ -39,3 +39,58 @@ export const Keywords = [
     "let",
     "const",
 ] as const
+
+export type Keyword = (typeof Keywords)[number]
+
+export const Modifiers = [
+    "pub",
+    "extern",
+    "foreign",
+] as const
+
+export type Modifier = (typeof Modifiers)[number] // i didnt even know you could do this
+
+export const MultiCharDelimiters = [
+    ":="
+]
+
+export const SingleCharDelimiters = [
+    "(",
+    ")",
+    "{",
+    "}",
+    ",",
+    ";",
+    ":",
+    "."
+]
+
+export const SingleCharOperators = [
+    "<",
+    ">",
+    "!",
+    "=",
+    "+",
+    "-",
+    "*",
+    "/",
+    "&",
+    "|"
+]
+
+export const MultiCharOperators = [
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "->",
+    "=>",
+    "&&",
+    "||",
+    "++",
+    "--",
+    "+=",
+    "-=",
+    "*=",
+    "/="
+]

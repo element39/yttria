@@ -5,16 +5,11 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-fn fib(n: int) -> int {
-    if (n <= 1) {
-        return n
-    }
-    
-    return fib(n - 1) + fib(n - 2)
-}
+extern pub fn puts(text: string) -> int
 
-fn main() -> int {
-    return fib(12)
+pub fn main() -> int {
+    puts("hi mum!!!!!!!")
+    return 0
 }
 `.trim()
 
@@ -81,15 +76,17 @@ const exeTime = performance.now()
 console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
 console.log(`total compilation time: ${(exeTime - start).toFixed(3)}ms\n`)
 
-console.log("running...\n")
-const exe = Bun.spawnSync([
-    "./out"
+console.log(`running... program output:\n\n${"-".repeat(50)}\n`)
+const proc = Bun.spawn([
+    process.platform === "win32" ? ".\\out.exe" : "./out"
 ], {
-    stdout: "pipe",
-    stderr: "pipe"
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit"
 })
 
-console.log(`\nexit code: ${exe.exitCode}`)
+const exitCode = await proc.exited
+console.log(`\n${"-".repeat(50)}\n\nexit code: ${exitCode}`)
 
 const run = performance.now()
 console.log(`total run time: ${(performance.now() - run).toFixed(3)}ms\n`)

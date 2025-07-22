@@ -1,4 +1,4 @@
-import { Keywords, Token, TokenType } from "../lexer/token"
+import { Keyword, Modifier, Modifiers, Token, TokenType } from "../lexer/token"
 import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
@@ -31,7 +31,9 @@ export class Parser {
         "*": 4,
         "/": 4,
     }
-    
+
+    modifiers: Modifier[] = []
+
     constructor(tokens: Token[]) {
         this.tokens = tokens
     }
@@ -43,8 +45,15 @@ export class Parser {
             if (t.type === "EOF") {
                 break
             }
+            // WTF
+            if ((Modifiers as unknown as string[]).includes(t.literal)) {
+                this.modifiers.push(t.literal as Modifier)
+                this.advance()
+                continue
+            }
 
             const expr = this.parseExpression()
+            this.modifiers = []
 
             if (expr) {
                 this.program.body.push(expr)
@@ -209,7 +218,7 @@ export class Parser {
 
     private visitKeyword(t: Token): Expression | null {
         // turned switch into table :hooray:
-        const table: { [key in typeof Keywords[number]]?: () => Expression | null } = {
+        const table: { [key in Keyword]?: () => Expression | null } = {
             "fn": this.parseFunctionDeclaration.bind(this),
             "if": this.parseIfExpression.bind(this),
             "while": this.parseWhileExpression.bind(this),
@@ -220,7 +229,7 @@ export class Parser {
         }
 
         if (t.literal in table) {
-            return table[t.literal as typeof Keywords[number]]!()
+            return table[t.literal as Keyword]!()
         }
 
         return null
@@ -289,6 +298,7 @@ export class Parser {
     }
 
     private parseFunctionDeclaration(): FunctionDeclaration {
+        const modifiers = this.modifiers
         const name: Identifier = {
             type: "Identifier",
             value: this.peek().literal
@@ -301,7 +311,6 @@ export class Parser {
         }
 
         const params: FunctionParam[] = []
-
 
         if (this.peek(1).literal !== ")") {
             while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
@@ -347,14 +356,16 @@ export class Parser {
 
             this.advance()
             
-            const body: Expression[] = this.parseBlock()
+            let body: Expression[] = []
+            if (!modifiers.includes("extern")) body = this.parseBlock()
 
             return {
                 type: "FunctionDeclaration",
                 name,
                 params,
                 body,
-                returnType
+                returnType,
+                modifiers
             }
         }
 
@@ -365,6 +376,7 @@ export class Parser {
             name,
             params,
             body,
+            modifiers
         }
     }
 

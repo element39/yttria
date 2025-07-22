@@ -40,13 +40,12 @@ i32 // 32-bit signed integer
 i64 // 64-bit signed integer
 
 float // 64-bit floating point number
-f32 // 32-bit floating point number
-f64 // 64-bit floating point number
 
 bool // boolean, hard alias to i1
 
-string // utf8 string
-rune // single utf8 character
+string // utf8 string constant
+String // mutable heap string (hard alias to i8[])
+char // single utf8 character
 
 null // null value (yttria is an expressive language, so null is still a value)
 
