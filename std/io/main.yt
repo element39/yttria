@@ -1,4 +1,5 @@
-extern fn printf(format: str, ...) -> int;
+extern pub fn puts(text: string) -> int
+
 fn println(text: str) -> void {
-    printf("%s\n", text);
+    puts(text)
 }

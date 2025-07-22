@@ -347,29 +347,34 @@ export class Typechecker {
     }
 
     private checkFunctionCall(expr: FunctionCall): Expression {
-        const fnSy = this.getSymbol(expr.callee.value);
-        if (!fnSy) {
-            throw new Error(`Function "${expr.callee.value}" is not defined`);
-        }
-
-        if (fnSy.kind !== "function") {
-            throw new Error(`"${expr.callee.value}" is not a function`);
-        }
-
-        const args = expr.args.map(arg => this.checkExpression(arg));
-        if (args.length !== fnSy.paramTypes.length) {
-            throw new Error(`Function "${expr.callee.value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
-        }
-        
-        args.forEach((arg, i) => {
-            const paramType = fnSy.paramTypes[i];
-            const argType = this.inferTypeFromValue(arg);
-            if (paramType.type !== argType.type) {
-                throw new Error(`Argument ${i + 1} of function "${expr.callee.value}" expects type ${paramType.type}, but got ${argType.type}`);
+        if (expr.callee.type === "Identifier") {
+            const fnSy = this.getSymbol(expr.callee.value);
+            if (!fnSy) {
+                throw new Error(`Function "${expr.callee.value}" is not defined`);
             }
-        });
 
-        return { ...expr, args } as FunctionCall;
+            if (fnSy.kind !== "function") {
+                throw new Error(`"${expr.callee.value}" is not a function`);
+            }
+
+            const args = expr.args.map(arg => this.checkExpression(arg));
+            if (args.length !== fnSy.paramTypes.length) {
+                throw new Error(`Function "${expr.callee.value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
+            }
+            
+            args.forEach((arg, i) => {
+                const paramType = fnSy.paramTypes[i];
+                const argType = this.inferTypeFromValue(arg);
+                if (paramType.type !== argType.type) {
+                    throw new Error(`Argument ${i + 1} of function "${expr.callee.value}" expects type ${paramType.type}, but got ${argType.type}`);
+                }
+            });
+
+            return { ...expr, args } as FunctionCall;
+            // TODO: this is broken and needs fixing
+        } else if (expr.callee.type === "MemberAccess") {
+             const modName = expr.callee.object. // ... uhhhhh brain fart
+        }
     }
 
     private checkIdentifier(expr: Identifier): Expression {

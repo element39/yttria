@@ -11,6 +11,7 @@ export type ExpressionType =
 
     | "Identifier"
     | "MemberAccess"
+    | "ImportExpression"
 
     | "FunctionDeclaration"
     | "FunctionParam"
@@ -55,6 +56,12 @@ export type MemberAccess = Expression & {
     property: Expression
 }
 
+export type ImportExpression = Expression & {
+    type: "ImportExpression"
+    path: string // e.g std/io
+    alias?: string // use std/io as aliased_name
+}
+
 export type FunctionDeclaration = Expression & {
     type: "FunctionDeclaration"
     name: Identifier
@@ -67,7 +74,7 @@ export type FunctionDeclaration = Expression & {
 
 export type FunctionCall = Expression & {
     type: "FunctionCall"
-    callee: Identifier
+    callee: Identifier | MemberAccess
     args: Expression[]
 }
 

@@ -1,14 +1,15 @@
 import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
+import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
 import { Typechecker } from "./src/typechecker"
+
 // error driven development right here
-
 const program = `
-extern pub fn puts(text: string) -> int
+use std/io
 
-pub fn main() -> int {
-    puts("hi mum!!!!!!!")
+pub fn main() {
+    io.println("look ma! no hands!")
     return 0
 }
 `.trim()
@@ -31,15 +32,21 @@ await Bun.write("ast.json", JSON.stringify(ast, null, 2))
 const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
+const mr = new ModuleResolver(".", ast)
+const modules = await mr.resolve()
+await Bun.write("modules.json", JSON.stringify(modules, null, 2))
+
+const modulesTime = performance.now()
+console.log(`resolved ${Object.keys(modules).length} module(s) in ${(modulesTime - astTime).toFixed(3)}ms`)
+
 const tc = new Typechecker(ast);
 const c = tc.check()
 
 await Bun.write("tcAst.json", JSON.stringify(c, null, 2))
 
-
 const typecheckTime = performance.now()
 
-console.log(`typechecked in ${(typecheckTime - astTime).toFixed(3)}ms`)
+console.log(`typechecked in ${(typecheckTime - modulesTime).toFixed(3)}ms`)
 
 const gen = new LLVMGen(c)
 const ll = gen.generate()
