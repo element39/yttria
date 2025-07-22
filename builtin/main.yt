@@ -1,0 +1,4 @@
+extern fn strcmp(a: str, b: str) -> int;
+fn str_eq(a: str, b: str) -> bool {
+    return strcmp(a, b) == 0;
+}

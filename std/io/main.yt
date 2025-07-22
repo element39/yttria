@@ -1,0 +1,4 @@
+extern fn printf(format: str, ...) -> int;
+fn println(text: str) -> void {
+    printf("%s\n", text);
+}

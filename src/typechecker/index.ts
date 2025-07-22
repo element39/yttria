@@ -53,7 +53,6 @@ export class Typechecker {
     }
 
     private getSymbol(name: string): CheckerSymbol | undefined {
-        // forgot about array.find()
         return this.symbols.find(scope => name in scope)?.[name]
     }
 
@@ -89,7 +88,6 @@ export class Typechecker {
                         "i16",
                         "i32",
                         "i64",
-
                         "float",
                     ]
 
@@ -171,11 +169,36 @@ export class Typechecker {
 
     public check(): ProgramExpression {
         for (const expr of this.src.body) {
+            if (expr.type === "FunctionDeclaration") {
+                this.declareFunctionSignature(expr as FunctionDeclaration);
+            }
+        }
+
+        for (const expr of this.src.body) {
             const checked = this.checkExpression(expr)
             this.ast.body.push(checked)
         }
-        
         return this.ast
+    }
+
+    private declareFunctionSignature(expr: FunctionDeclaration): void {
+        const name = expr.name.value;
+        if (this.getSymbol(name)) {
+            throw new Error(`Function "${name}" is already declared`);
+        }
+        const paramTypes = expr.params.map(p => {
+            if (!p.paramType) throw new Error(`Parameter "${p.name.value}" missing type annotation`);
+            return this.resolveTypeAnnotation(p.paramType);
+        });
+        const returnType = expr.returnType
+            ? this.resolveTypeAnnotation(expr.returnType)
+            : this.types.void;
+        this.pushSymbol(name, {
+            kind: "function",
+            type: "function",
+            paramTypes,
+            returnType
+        });
     }
 
     private checkExpression(expr: Expression): Expression {
@@ -183,11 +206,9 @@ export class Typechecker {
             const e = this.table[expr.type]!(expr)
             return e
         }
-        
         return expr
     }
 
-    // TODO: do this
     private checkMemberAccess(expr: MemberAccess): Expression {
         const object = this.checkExpression(expr.object);
         const objectType = this.inferTypeFromValue(object);
@@ -198,12 +219,6 @@ export class Typechecker {
 
         const property = this.checkExpression(expr.property);
         const propertyType = this.inferTypeFromValue(property);
-
-        // if (!["string", "number"].includes(propertyType.type)) {
-        //     throw new Error(`Invalid property access on ${objectType.type}: ${propertyType.type}`);
-        // }
-
-        // TODO: check if property exists on type
 
         return { ...expr, object, property } as MemberAccess;
     }
@@ -236,9 +251,6 @@ export class Typechecker {
 
     private checkFunctionDeclaration(expr: FunctionDeclaration): Expression {
         const { name, params, returnType, body } = expr;
-        if (this.getSymbol(name.value)) {
-            throw new Error(`Function "${name.value}" is already declared`);
-        }
 
         this.pushScope();
 
@@ -331,17 +343,10 @@ export class Typechecker {
         }
 
         this.popScope();
-        this.pushSymbol(name.value, {
-            kind: "function",
-            type: "function",
-            returnType: resolvedReturnType,
-            paramTypes: params.map(p => this.resolveTypeAnnotation(p.paramType))
-        });
         return { ...expr, resolvedReturnType, body: checkedBody } as FunctionDeclaration;
     }
 
     private checkFunctionCall(expr: FunctionCall): Expression {
-        // check the args match the parameters of the function
         const fnSy = this.getSymbol(expr.callee.value);
         if (!fnSy) {
             throw new Error(`Function "${expr.callee.value}" is not defined`);
@@ -462,7 +467,6 @@ export class Typechecker {
                 "i16",
                 "i32",
                 "i64",
-
                 "float",
             ]
 

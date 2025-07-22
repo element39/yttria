@@ -5,9 +5,17 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-foo.bar(5).baz
+fn fib(n: int) -> int {
+    if (n <= 1) {
+        return n
+    }
+    
+    return fib(n - 1) + fib(n - 2)
+}
 
-baz((5 + 3)).bar
+fn main() -> int {
+    return fib(12)
+}
 `.trim()
 
 const start = performance.now()
