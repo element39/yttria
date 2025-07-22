@@ -30,7 +30,7 @@
 - [x] comments
 - [x] switch statements
 - [x] while statements
-- [ ] member access (dot operator)
+- [x] member access (dot operator)
 - [ ] error handling (syntax errors)
 
 ## typechecker

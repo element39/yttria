@@ -1,4 +1,4 @@
-import { BinaryExpression, CaseExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
+import { BinaryExpression, CaseExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
 import { CheckerSymbol, CheckerType } from "./types"
 
 export class Typechecker {
@@ -21,8 +21,10 @@ export class Typechecker {
     symbols: Record<string, CheckerSymbol>[] = [{}]
     
     table: { [K in ExpressionType]?: (e: any) => Expression } = {
+        MemberAccess:         this.checkMemberAccess.bind(this),
         VariableDeclaration:  this.checkVariableDeclaration.bind(this),
         FunctionDeclaration:  this.checkFunctionDeclaration.bind(this),
+        FunctionCall:         this.checkFunctionCall.bind(this),
         IfExpression:         this.checkIfExpression.bind(this),
         ElseExpression:       this.checkElseExpression.bind(this),
         SwitchExpression:     this.parseSwitchExpression.bind(this),
@@ -185,6 +187,27 @@ export class Typechecker {
         return expr
     }
 
+    // TODO: do this
+    private checkMemberAccess(expr: MemberAccess): Expression {
+        const object = this.checkExpression(expr.object);
+        const objectType = this.inferTypeFromValue(object);
+
+        if (!["object", "array", "struct"].includes(objectType.type)) {
+            throw new Error(`Member access on non-object type: ${objectType.type}`);
+        }
+
+        const property = this.checkExpression(expr.property);
+        const propertyType = this.inferTypeFromValue(property);
+
+        // if (!["string", "number"].includes(propertyType.type)) {
+        //     throw new Error(`Invalid property access on ${objectType.type}: ${propertyType.type}`);
+        // }
+
+        // TODO: check if property exists on type
+
+        return { ...expr, object, property } as MemberAccess;
+    }
+
     private checkVariableDeclaration(expr: VariableDeclaration): Expression {
         const { name, value, typeAnnotation, mutable } = expr;
 
@@ -315,6 +338,33 @@ export class Typechecker {
             paramTypes: params.map(p => this.resolveTypeAnnotation(p.paramType))
         });
         return { ...expr, resolvedReturnType, body: checkedBody } as FunctionDeclaration;
+    }
+
+    private checkFunctionCall(expr: FunctionCall): Expression {
+        // check the args match the parameters of the function
+        const fnSy = this.getSymbol(expr.callee.value);
+        if (!fnSy) {
+            throw new Error(`Function "${expr.callee.value}" is not defined`);
+        }
+
+        if (fnSy.kind !== "function") {
+            throw new Error(`"${expr.callee.value}" is not a function`);
+        }
+
+        const args = expr.args.map(arg => this.checkExpression(arg));
+        if (args.length !== fnSy.paramTypes.length) {
+            throw new Error(`Function "${expr.callee.value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
+        }
+        
+        args.forEach((arg, i) => {
+            const paramType = fnSy.paramTypes[i];
+            const argType = this.inferTypeFromValue(arg);
+            if (paramType.type !== argType.type) {
+                throw new Error(`Argument ${i + 1} of function "${expr.callee.value}" expects type ${paramType.type}, but got ${argType.type}`);
+            }
+        });
+
+        return { ...expr, args } as FunctionCall;
     }
 
     private checkIdentifier(expr: Identifier): Expression {
