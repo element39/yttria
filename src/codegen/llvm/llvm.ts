@@ -1,6 +1,6 @@
 import vm from "llvm-bindings";
 import { Codegen } from "..";
-import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, VariableDeclaration, WhileExpression } from "../../parser/ast";
+import { BinaryExpression, BooleanLiteral, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, NumberLiteral, ReturnExpression, StringLiteral, VariableDeclaration, WhileExpression } from "../../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class LLVMGen extends Codegen {
@@ -147,6 +147,9 @@ export class LLVMGen extends Codegen {
 
     genExpression(expr: Expression): vm.Function | vm.Value | void {
         switch (expr.type) {
+            case "StringLiteral":
+                const s = expr as StringLiteral;
+                return this.helper.builder.CreateGlobalStringPtr(s.value);
             case "NumberLiteral":
                 const n = expr as NumberLiteral;
                 return this.helper.builder.getInt32(n.value);

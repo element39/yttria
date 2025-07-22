@@ -5,20 +5,9 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-fn fib(n: int) -> int {
-    if (n <= 1) {
-        return n
-    }
-    
-    return fib(n - 1) + fib(n - 2)
-}
-
-fn add(b: i32, a: i32) -> i32 {
-    return a + b
-}
-
 fn main() -> int {
-    return fib(12) // returns 144!!!!!!!!! im so goated
+    const a := "Hello, World!"
+    return 0
 }
 `.trim()
 
@@ -26,17 +15,17 @@ const start = performance.now()
 
 const l = new Lexer(program)
 const t = l.lex()
-
+console.log(t)
 const lexerTime = performance.now()
 
-Bun.write("tok.json", JSON.stringify(t, null, 2))
+await Bun.write("tok.json", JSON.stringify(t, null, 2))
 
 console.log(`lexed ${t.length} tokens in ${(lexerTime - start).toFixed(3)}ms`)
 
 const p = new Parser(t)
 const ast = p.parse()
 
-Bun.write("ast.json", JSON.stringify(ast, null, 2))
+await Bun.write("ast.json", JSON.stringify(ast, null, 2))
 
 const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
@@ -44,7 +33,7 @@ console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms,
 const tc = new Typechecker(ast);
 const c = tc.check()
 
-Bun.write("tcAst.json", JSON.stringify(c, null, 2))
+await Bun.write("tcAst.json", JSON.stringify(c, null, 2))
 
 
 const typecheckTime = performance.now()
@@ -54,7 +43,7 @@ console.log(`typechecked in ${(typecheckTime - astTime).toFixed(3)}ms`)
 const gen = new LLVMGen(c)
 const ll = gen.generate()
 
-Bun.write("out.ll", ll)
+await Bun.write("out.ll", ll)
 
 const llTime = performance.now()
 
