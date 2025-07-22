@@ -41,7 +41,7 @@
   - [x] infer return type from usage
   - [x] type consistency
   - [ ] parameter type validation
-- [ ] function call type validation
+- [x] function call type validation
 - [x] if statements
 - [x] expressions
 - [x] binary expressions
