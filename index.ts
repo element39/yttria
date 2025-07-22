@@ -6,8 +6,7 @@ import { Typechecker } from "./src/typechecker"
 
 const program = `
 fn main() -> int {
-    const a := "Hello, World!"
-    return 0
+    return 5
 }
 `.trim()
 
@@ -15,7 +14,6 @@ const start = performance.now()
 
 const l = new Lexer(program)
 const t = l.lex()
-console.log(t)
 const lexerTime = performance.now()
 
 await Bun.write("tok.json", JSON.stringify(t, null, 2))

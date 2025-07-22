@@ -1,23 +1,21 @@
-import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
-import { CheckerSymbol } from "./types"
+import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
+import { CheckerSymbol, CheckerType } from "./types"
 
 export class Typechecker {
     src: ProgramExpression
     ast: ProgramExpression = { type: "Program", body: [] }
     
-    // Keep your simple type representation
-    types: Record<string, CheckerSymbol> = {
-        int:    { type: "int" },
-        i8:     { type: "i8" },
-        i16:    { type: "i16" },
-        i32:    { type: "i32" },
-        i64:    { type: "i64" },
-
-        float:  { type: "float" },
-        string: { type: "string" },
-        bool:   { type: "bool" },
-        void:   { type: "void" },
-        null:   { type: "null" },
+    types: Record<string, CheckerType> = {
+        int:    { kind: "type", type: "int" },
+        i8:     { kind: "type", type: "i8" },
+        i16:    { kind: "type", type: "i16" },
+        i32:    { kind: "type", type: "i32" },
+        i64:    { kind: "type", type: "i64" },
+        float:  { kind: "type", type: "float" },
+        string: { kind: "type", type: "string" },
+        bool:   { kind: "type", type: "bool" },
+        void:   { kind: "type", type: "void" },
+        null:   { kind: "type", type: "null" },
     }
     
     symbols: Record<string, CheckerSymbol>[] = [{}]
@@ -52,13 +50,8 @@ export class Typechecker {
     }
 
     private getSymbol(name: string): CheckerSymbol | undefined {
-        for (let i = this.symbols.length - 1; i >= 0; i--) {
-            const scope = this.symbols[i]
-            if (name in scope) {
-                return scope[name]
-            }
-        }
-        return undefined
+        // forgot about array.find()
+        return this.symbols.find(scope => name in scope)?.[name]
     }
 
     private inferTypeFromValue(value: Expression): CheckerSymbol {
@@ -85,20 +78,6 @@ export class Typechecker {
                 const rightType = this.inferTypeFromValue((v as BinaryExpression).right)
 
                 const op = (v as BinaryExpression).operator
-                
-                // if (["+", "-", "*", "/"].includes(op)) {
-                //     if (leftType.type === "int" && rightType.type === "int") {
-                //         return this.types.int
-                //     } else if (leftType.type === "float" || rightType.type === "float") {
-                //         return this.types.float
-                //     }
-                // } else if (["==", "!=", "<", ">", "<=", ">="].includes(op)) {
-                //     if (leftType.type === rightType.type) {
-                //         return this.types.bool
-                //     }
-                // } else if (["&&", "||"].includes(op)) {
-                //     return this.types.bool
-                // }
                 const numericOps = ["+", "-", "*", "/"];
                 if (numericOps.includes(op)) {
                     const validTypes = [
@@ -156,23 +135,29 @@ export class Typechecker {
                     if (postTy.type !== "int" && postTy.type !== "float") {
                         throw new Error(`Operand for post-unary operator must be a number, but got ${postTy.type}`);
                     }
-                    // The type of x++ is the type of x
                     return postTy;
                 }
 
                 throw new Error(`Unknown post-unary operator: ${(v as PostUnaryExpression).operator}`);
             case "FunctionCall":
-                // TODO: fix ts
-                return this.types.int; // stop the fibbonaci example from breaking
+                const call = v as FunctionCall
+                const funcSymbol = this.getSymbol(call.callee.value);
+                if (!funcSymbol) {
+                    throw new Error(`Function "${call.callee.value}" is not defined`);
+                }
+                if (funcSymbol.kind !== "function") {
+                    throw new Error(`"${call.callee.value}" is not a function`);
+                }
+                return funcSymbol.returnType;
             default:
                 throw new Error(`Cannot infer type from value of type: ${v.type}`)
         }
     }
 
-    private resolveTypeAnnotation(typeAnnotation: { value: string }): CheckerSymbol {
-        const typeSymbol = this.types[typeAnnotation.value];
+    private resolveTypeAnnotation(identifier: Identifier): CheckerType {
+        const typeSymbol = this.types[identifier.value];
         if (!typeSymbol) {
-            throw new Error(`Type "${typeAnnotation.value}" is not defined`);
+            throw new Error(`Type "${identifier.value}" is not defined`);
         }
         return typeSymbol;
     }
@@ -221,7 +206,7 @@ export class Typechecker {
             resolvedType = valueType;
         }
 
-        this.pushSymbol(name.value, resolvedType);
+        this.pushSymbol(name.value, { kind: "variable", type: resolvedType.type });
         return { ...expr, resolvedType, mutable } as VariableDeclaration;
     }
 
@@ -317,11 +302,17 @@ export class Typechecker {
                 }
                 resolvedReturnType = firstReturnType;
             } else {
-                resolvedReturnType = this.types.void; // why was it null before :sob:
+                resolvedReturnType = this.types.void;
             }
         }
 
         this.popScope();
+        this.pushSymbol(name.value, {
+            kind: "function",
+            type: "function",
+            returnType: resolvedReturnType,
+            paramTypes: params.map(p => this.resolveTypeAnnotation(p.paramType))
+        });
         return { ...expr, resolvedReturnType, body: checkedBody } as FunctionDeclaration;
     }
 
@@ -388,27 +379,6 @@ export class Typechecker {
         const lType = this.inferTypeFromValue(left)
         const rType = this.inferTypeFromValue(right)
         
-        // if (["+", "-", "*", "/"].includes(expr.operator)) {
-        //     if (lType.type !== "int" && lType.type !== "float") {
-        //         throw new Error(`Left operand for "${expr.operator}" must be a number, but got ${lType.type}`);
-        //     }
-        //     if (rType.type !== "int" && rType.type !== "float") {
-        //         throw new Error(`Right operand for "${expr.operator}" must be a number, but got ${rType.type}`);
-        //     }
-        // }
-
-        // if (["==", "!=", "<", ">", "<=", ">="].includes(expr.operator)) {
-        //     if (lType.type !== rType.type) {
-        //         throw new Error(`Operands for "${expr.operator}" must be of the same type, but got ${lType.type} and ${rType.type}`);
-        //     }
-
-        //     if (lType.type === "null") {
-        //         throw new Error(`Cannot compare null with "${expr.operator}"`);
-        //     }
-        //     if (lType.type === "bool" && rType.type === "bool") {
-        //         return { ...expr, left, right } as BinaryExpression; // bool comparison
-        //     }
-        // }
         const numericOps = ["+", "-", "*", "/"];
         const comparisonOps = ["==", "!=", "<", ">", "<=", ">="];
         if (numericOps.includes(expr.operator)) {

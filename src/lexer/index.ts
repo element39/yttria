@@ -220,6 +220,7 @@ export class Lexer {
                 }
 
                 this.tokens.push({
+                    // @ts-expect-error
                     type: (Keywords.includes(literal) ? "Keyword" : "Identifier"),
                     literal
                 })
