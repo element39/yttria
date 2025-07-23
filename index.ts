@@ -2,24 +2,16 @@ import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
-import { ModuleResolver } from "./src/resolver/resolver"
 import { Typechecker } from "./src/typechecker"
 
 // error driven development right here
 const program = `
 use std/io
-<<<<<<< HEAD
-extern pub fn puts(s: str) -> i32
-pub fn main() {
-    // io.println("look ma! no hands!")
-    puts("look ma! no hands!");
-=======
 
 extern fn puts(text: string) -> int
 
 pub fn main() -> int {
     puts("hi mum!!!!!!!")
->>>>>>> import-resolver
     return 0
 }
 `.trim()
@@ -54,13 +46,6 @@ const c = tc.check()
 
 await Bun.write("tcAst.json", JSON.stringify(c, null, 2))
 
-<<<<<<< HEAD
-=======
-const mr = new ModuleResolver(ast);
-const m = mr.resolve();
-console.log(m)
-
->>>>>>> import-resolver
 const typecheckTime = performance.now()
 
 console.log(`typechecked in ${(typecheckTime - modulesTime).toFixed(3)}ms`)
