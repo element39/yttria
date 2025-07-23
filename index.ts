@@ -7,9 +7,10 @@ import { Typechecker } from "./src/typechecker"
 // error driven development right here
 const program = `
 use std/io
-
+extern pub fn puts(s: str) -> i32
 pub fn main() {
-    io.println("look ma! no hands!")
+    // io.println("look ma! no hands!")
+    puts("look ma! no hands!");
     return 0
 }
 `.trim()

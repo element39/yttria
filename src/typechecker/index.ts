@@ -348,32 +348,57 @@ export class Typechecker {
 
     private checkFunctionCall(expr: FunctionCall): Expression {
         if (expr.callee.type === "Identifier") {
-            const fnSy = this.getSymbol(expr.callee.value);
+            const fnSy = this.getSymbol((expr.callee as Identifier).value);
             if (!fnSy) {
-                throw new Error(`Function "${expr.callee.value}" is not defined`);
+                throw new Error(`Function "${(expr.callee as Identifier).value}" is not defined`);
             }
-
             if (fnSy.kind !== "function") {
-                throw new Error(`"${expr.callee.value}" is not a function`);
+                throw new Error(`"${(expr.callee as Identifier).value}" is not a function`);
             }
-
             const args = expr.args.map(arg => this.checkExpression(arg));
             if (args.length !== fnSy.paramTypes.length) {
-                throw new Error(`Function "${expr.callee.value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
+                throw new Error(`Function "${(expr.callee as Identifier).value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
             }
-            
             args.forEach((arg, i) => {
                 const paramType = fnSy.paramTypes[i];
                 const argType = this.inferTypeFromValue(arg);
                 if (paramType.type !== argType.type) {
-                    throw new Error(`Argument ${i + 1} of function "${expr.callee.value}" expects type ${paramType.type}, but got ${argType.type}`);
+                    throw new Error(`Argument ${i + 1} of function "${(expr.callee as Identifier).value}" expects type ${paramType.type}, but got ${argType.type}`);
                 }
             });
-
             return { ...expr, args } as FunctionCall;
-            // TODO: this is broken and needs fixing
         } else if (expr.callee.type === "MemberAccess") {
-             const modName = expr.callee.object. // ... uhhhhh brain fart
+            // Handle module member access: io.read()
+            const member = expr.callee as MemberAccess;
+            if (member.object.type === "Identifier") {
+                const modName = (member.object as Identifier).value;
+                // Try to get module from resolver (assume you have a resolver instance)
+                const mod = this.moduleResolver?.getModuleByAlias(modName) || this.moduleResolver?.getModuleByPath(modName);
+                if (!mod) {
+                    throw new Error(`Module "${modName}" is not imported`);
+                }
+                // Find function declaration in module
+                const fnDecl = mod.body.find(
+                    e => e.type === "FunctionDeclaration" && (e as FunctionDeclaration).name.value === (member.property as Identifier).value
+                ) as FunctionDeclaration | undefined;
+                if (!fnDecl) {
+                    throw new Error(`Function "${(member.property as Identifier).value}" not found in module "${modName}"`);
+                }
+                // Check arguments
+                const args = expr.args.map(arg => this.checkExpression(arg));
+                if (args.length !== fnDecl.params.length) {
+                    throw new Error(`Function "${fnDecl.name.value}" expects ${fnDecl.params.length} arguments, but got ${args.length}`);
+                }
+                fnDecl.params.forEach((param, i) => {
+                    const paramType = this.resolveTypeAnnotation(param.paramType!);
+                    const argType = this.inferTypeFromValue(args[i]);
+                    if (paramType.type !== argType.type) {
+                        throw new Error(`Argument ${i + 1} of function "${fnDecl.name.value}" expects type ${paramType.type}, but got ${argType.type}`);
+                    }
+                });
+                return { ...expr, args } as FunctionCall;
+            }
+            throw new Error("Unsupported member access for function call");
         }
     }
 
