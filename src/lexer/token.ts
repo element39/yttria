@@ -36,6 +36,8 @@ export const Keywords = [
     "break",
     "continue",
     
+    "use",
+    "as",
     "let",
     "const",
 ] as const

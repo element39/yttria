@@ -1,11 +1,14 @@
 import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
+import { ModuleResolver } from "./src/resolver/resolver"
 import { Typechecker } from "./src/typechecker"
 // error driven development right here
 
 const program = `
-extern pub fn puts(text: string) -> int
+use std/io
+
+extern fn puts(text: string) -> int
 
 pub fn main() -> int {
     puts("hi mum!!!!!!!")
@@ -36,6 +39,9 @@ const c = tc.check()
 
 await Bun.write("tcAst.json", JSON.stringify(c, null, 2))
 
+const mr = new ModuleResolver(ast);
+const m = mr.resolve();
+console.log(m)
 
 const typecheckTime = performance.now()
 

@@ -1,5 +1,5 @@
 import { Keyword, Modifier, Modifiers, Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, ImportExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -226,6 +226,7 @@ export class Parser {
             "let": () => this.parseVariableDeclaration.bind(this)(true),
             "const": () => this.parseVariableDeclaration.bind(this)(false),
             "switch": this.parseSwitchExpression.bind(this),
+            "use": this.parseImportExpression.bind(this),
         }
 
         if (t.literal in table) {
@@ -513,6 +514,42 @@ export class Parser {
             type: "SwitchExpression",
             value,
             cases
+        }
+    }
+
+    private parseImportExpression(): ImportExpression {
+        // for "use std/io as stdio" tokens would be like
+        // Identifier("std") Operator("/") Identifier("io") Keyword("as") Identifier("stdio")
+        // and we gotta turn that into name = "std/io" and alias = "stdio"
+        let path = (() => {
+            const parts: string[] = []
+            while (this.peek().type === "Identifier" || this.peek().literal === "/") {
+                parts.push(this.peek().literal)
+                this.advance()
+            }
+            return parts.join("")
+        })()
+        
+        if (this.peek().literal !== "as") {
+            return {
+                type: "ImportExpression",
+                path
+            }
+        }
+
+        this.advance()
+
+        if (this.peek().type !== "Identifier") {
+            throw new Error(`Expected identifier after "as", got "${this.peek().literal}"`)
+        }
+
+        const alias = this.peek().literal
+        this.advance()
+        console.log(this.peek())
+        return {
+            type: "ImportExpression",
+            path,
+            alias
         }
     }
 

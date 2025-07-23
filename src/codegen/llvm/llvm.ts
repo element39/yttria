@@ -88,7 +88,7 @@ export class LLVMGen extends Codegen {
             name,
             returnType,
             expr.params.map(p => this.types[p.paramType.value]),
-            expr.modifiers.includes("pub") ? "external" : "internal"
+            (expr.modifiers.includes("pub") || expr.modifiers.includes("extern")) ? "external" : "internal"
         );
     }
 
