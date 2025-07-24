@@ -74,7 +74,7 @@ export type FunctionDeclaration = Expression & {
 
 export type FunctionCall = Expression & {
     type: "FunctionCall"
-    callee: Identifier | MemberAccess
+    callee: Identifier// | MemberAccess
     args: Expression[]
 }
 
