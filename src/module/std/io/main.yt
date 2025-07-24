@@ -1,5 +1,0 @@
-extern pub fn puts(text: string) -> int
-
-fn println(text: str) -> void {
-    puts(text)
-}
