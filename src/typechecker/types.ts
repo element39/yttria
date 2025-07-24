@@ -6,6 +6,7 @@ export type CheckerSymbol =
     | CheckerVariable
     | CheckerFunction
     | CheckerType
+    | CheckerModule
 
 export type CheckerVariable = {
     kind: "variable";
@@ -22,4 +23,10 @@ export type CheckerFunction = {
 export type CheckerType = {
     kind: "type";
     type: string
+}
+
+export type CheckerModule = {
+    kind: "module";
+    type: "module";
+    exports: Map<string, CheckerSymbol>;
 }

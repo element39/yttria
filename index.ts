@@ -6,15 +6,14 @@ import { Typechecker } from "./src/typechecker"
 
 // error driven development right here
 const program = `
+
 use std/io
 
-extern fn puts(text: string) -> int
-
 pub fn main() {
-    puts("hi mum!!!!!!!")
+    io.println("hi")
+    io.puts("this too!")
     return 2
-}
-`.trim()
+}`.trim()
 
 const start = performance.now()
 
@@ -41,7 +40,7 @@ console.log(`resolved modules in ${(moduleTime - lexerTime).toFixed(3)}ms`)
 const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - moduleTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
-const tc = new Typechecker(ast);
+const tc = new Typechecker(ast, m);
 const c = tc.check()
 
 await Bun.write("tcAst.json", JSON.stringify(c, null, 2))

@@ -1,8 +1,10 @@
 import { BinaryExpression, CaseExpression, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast"
+import { ResolvedModule } from "../module/types"
 import { CheckerSymbol, CheckerType } from "./types"
 
 export class Typechecker {
     src: ProgramExpression
+    modules: Record<string, ResolvedModule>
     ast: ProgramExpression = { type: "Program", body: [] }
     
     types: Record<string, CheckerType> = {
@@ -13,6 +15,7 @@ export class Typechecker {
         i64:    { kind: "type", type: "i64" },
         float:  { kind: "type", type: "float" },
         string: { kind: "type", type: "string" },
+        str:    { kind: "type", type: "string" }, // alias for string
         bool:   { kind: "type", type: "bool" },
         void:   { kind: "type", type: "void" },
         null:   { kind: "type", type: "null" },
@@ -142,12 +145,43 @@ export class Typechecker {
                 throw new Error(`Unknown post-unary operator: ${(v as PostUnaryExpression).operator}`);
             case "FunctionCall":
                 const call = v as FunctionCall
-                const funcSymbol = this.getSymbol(call.callee.value);
+                let funcSymbol: CheckerSymbol | undefined;
+                let functionName: string;
+                
+                if (call.callee.type === "Identifier") {
+                    const identifier = call.callee as Identifier;
+                    functionName = identifier.value;
+                    funcSymbol = this.getSymbol(identifier.value);
+                } else if (call.callee.type === "MemberAccess") {
+                    const memberAccess = call.callee as MemberAccess;
+                    if (memberAccess.object.type === "Identifier" && memberAccess.property.type === "Identifier") {
+                        const objectName = (memberAccess.object as Identifier).value;
+                        const propertyName = (memberAccess.property as Identifier).value;
+                        functionName = `${objectName}.${propertyName}`;
+                        
+                        // Look up the module symbol
+                        const moduleSymbol = this.getSymbol(objectName);
+                        if (moduleSymbol && moduleSymbol.kind === "module") {
+                            const moduleSymbolTyped = moduleSymbol as any; // CheckerModule
+                            funcSymbol = moduleSymbolTyped.exports.get(propertyName);
+                            if (!funcSymbol) {
+                                throw new Error(`Module "${objectName}" does not export function "${propertyName}"`);
+                            }
+                        } else {
+                            throw new Error(`"${objectName}" is not a module`);
+                        }
+                    } else {
+                        throw new Error(`Invalid member access in function call`);
+                    }
+                } else {
+                    throw new Error(`Invalid callee type in function call: ${call.callee.type}`);
+                }
+                
                 if (!funcSymbol) {
-                    throw new Error(`Function "${call.callee.value}" is not defined`);
+                    throw new Error(`Function "${functionName}" is not defined`);
                 }
                 if (funcSymbol.kind !== "function") {
-                    throw new Error(`"${call.callee.value}" is not a function`);
+                    throw new Error(`"${functionName}" is not a function`);
                 }
                 return funcSymbol.returnType;
             default:
@@ -163,8 +197,57 @@ export class Typechecker {
         return typeSymbol;
     }
 
-    constructor(program: ProgramExpression) {
+    constructor(program: ProgramExpression, modules: Record<string, ResolvedModule> = {}) {
         this.src = program
+        this.modules = modules
+        this.setupModuleSymbols()
+    }
+
+    private setupModuleSymbols() {
+        // Set up module namespace symbols for imported modules
+        for (const expr of this.src.body) {
+            if (expr.type === "ImportExpression") {
+                const importExpr = expr as any; // ImportExpression type
+                const modulePath = importExpr.path;
+                const module = this.modules[modulePath];
+                
+                if (module) {
+                    // Create a namespace symbol for the module
+                    // For now, we'll use the last part of the path as the namespace name
+                    const namespaceName = modulePath.split('/').pop() || modulePath;
+                    
+                    // Create a module symbol that contains all exported functions
+                    const moduleSymbol: CheckerSymbol = {
+                        kind: "module",
+                        type: "module",
+                        exports: new Map()
+                    };
+                    
+                    // Add exported functions to the module symbol
+                    for (const exportedExpr of module.exports) {
+                        if (exportedExpr.type === "FunctionDeclaration") {
+                            const funcDecl = exportedExpr as FunctionDeclaration;
+                            const paramTypes = funcDecl.params.map(p => {
+                                if (!p.paramType) throw new Error(`Parameter "${p.name.value}" missing type annotation`);
+                                return this.resolveTypeAnnotation(p.paramType);
+                            });
+                            const returnType = funcDecl.returnType
+                                ? this.resolveTypeAnnotation(funcDecl.returnType)
+                                : this.types.void;
+                            
+                            moduleSymbol.exports.set(funcDecl.name.value, {
+                                kind: "function",
+                                type: "function",
+                                paramTypes,
+                                returnType
+                            });
+                        }
+                    }
+                    
+                    this.pushSymbol(namespaceName, moduleSymbol);
+                }
+            }
+        }
     }
 
     public check(): ProgramExpression {
@@ -211,15 +294,39 @@ export class Typechecker {
 
     private checkMemberAccess(expr: MemberAccess): Expression {
         const object = this.checkExpression(expr.object);
-        const objectType = this.inferTypeFromValue(object);
+        
+        // Handle module member access
+        if (object.type === "Identifier") {
+            const identifier = object as Identifier;
+            const symbol = this.getSymbol(identifier.value);
+            
+            if (symbol && symbol.kind === "module") {
+                const moduleSymbol = symbol as any; // CheckerModule
+                const property = expr.property;
+                
+                if (property.type === "Identifier") {
+                    const propertyName = (property as Identifier).value;
+                    const exportedSymbol = moduleSymbol.exports.get(propertyName);
+                    
+                    if (!exportedSymbol) {
+                        throw new Error(`Module "${identifier.value}" does not export "${propertyName}"`);
+                    }
+                    
+                    // Return the member access as-is, it will be handled properly in function calls
+                    return { ...expr, object, property } as MemberAccess;
+                } else {
+                    throw new Error(`Invalid property access on module "${identifier.value}"`);
+                }
+            }
+        }
 
-        if (!["object", "array", "struct"].includes(objectType.type)) {
+        // Handle regular object member access
+        const objectType = this.inferTypeFromValue(object);
+        if (!["object", "array", "struct", "module"].includes(objectType.type)) {
             throw new Error(`Member access on non-object type: ${objectType.type}`);
         }
 
         const property = this.checkExpression(expr.property);
-        const propertyType = this.inferTypeFromValue(property);
-
         return { ...expr, object, property } as MemberAccess;
     }
 
@@ -347,29 +454,63 @@ export class Typechecker {
     }
 
     private checkFunctionCall(expr: FunctionCall): Expression {
-        const fnSy = this.getSymbol(expr.callee.value);
+        const callee = this.checkExpression(expr.callee);
+        
+        // Handle different callee types
+        let fnSy: CheckerSymbol | undefined;
+        let functionName: string;
+        
+        if (callee.type === "Identifier") {
+            const identifier = callee as Identifier;
+            functionName = identifier.value;
+            fnSy = this.getSymbol(identifier.value);
+        } else if (callee.type === "MemberAccess") {
+            const memberAccess = callee as MemberAccess;
+            if (memberAccess.object.type === "Identifier" && memberAccess.property.type === "Identifier") {
+                const objectName = (memberAccess.object as Identifier).value;
+                const propertyName = (memberAccess.property as Identifier).value;
+                functionName = `${objectName}.${propertyName}`;
+                
+                // Look up the module symbol
+                const moduleSymbol = this.getSymbol(objectName);
+                if (moduleSymbol && moduleSymbol.kind === "module") {
+                    const moduleSymbolTyped = moduleSymbol as any; // CheckerModule
+                    fnSy = moduleSymbolTyped.exports.get(propertyName);
+                    if (!fnSy) {
+                        throw new Error(`Module "${objectName}" does not export function "${propertyName}"`);
+                    }
+                } else {
+                    throw new Error(`"${objectName}" is not a module`);
+                }
+            } else {
+                throw new Error(`Invalid member access in function call`);
+            }
+        } else {
+            throw new Error(`Invalid callee type in function call: ${callee.type}`);
+        }
+
         if (!fnSy) {
-            throw new Error(`Function "${expr.callee.value}" is not defined`);
+            throw new Error(`Function "${functionName}" is not defined`);
         }
 
         if (fnSy.kind !== "function") {
-            throw new Error(`"${expr.callee.value}" is not a function`);
+            throw new Error(`"${functionName}" is not a function`);
         }
 
         const args = expr.args.map(arg => this.checkExpression(arg));
         if (args.length !== fnSy.paramTypes.length) {
-            throw new Error(`Function "${expr.callee.value}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
+            throw new Error(`Function "${functionName}" expects ${fnSy.paramTypes.length} arguments, but got ${args.length}`);
         }
         
         args.forEach((arg, i) => {
             const paramType = fnSy.paramTypes[i];
             const argType = this.inferTypeFromValue(arg);
             if (paramType.type !== argType.type) {
-                throw new Error(`Argument ${i + 1} of function "${expr.callee.value}" expects type ${paramType.type}, but got ${argType.type}`);
+                throw new Error(`Argument ${i + 1} of function "${functionName}" expects type ${paramType.type}, but got ${argType.type}`);
             }
         });
 
-        return { ...expr, args } as FunctionCall;
+        return { ...expr, callee, args } as FunctionCall;
     }
 
     private checkIdentifier(expr: Identifier): Expression {

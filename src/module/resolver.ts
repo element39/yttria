@@ -1,15 +1,22 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 import { Lexer } from "../lexer";
 import { Parser } from "../parser";
-import { Expression, FunctionDeclaration, ImportExpression, ProgramExpression } from "../parser/ast";
+import { Expression, FunctionDeclaration, ImportExpression, ProgramExpression, VariableDeclaration } from "../parser/ast";
 import { ResolvedModule } from "./types";
+
 export class ModuleResolver {
     private program: ProgramExpression;
     private modules: Map<string, ResolvedModule> = new Map();
+    private resolving: Set<string> = new Set(); // Track modules currently being resolved
+    private moduleSearchPaths: string[] = ["./src/module", "./node_modules", "./lib"];
+    private cache: Map<string, { content: string; mtime: number }> = new Map();
 
-    constructor(program: ProgramExpression) {
+    constructor(program: ProgramExpression, searchPaths?: string[]) {
         this.program = program;
+        if (searchPaths) {
+            this.moduleSearchPaths = [...searchPaths, ...this.moduleSearchPaths];
+        }
     }
 
     resolve() {
