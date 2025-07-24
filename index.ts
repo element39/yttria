@@ -1,5 +1,6 @@
 import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
+import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
 import { Typechecker } from "./src/typechecker"
 
@@ -30,8 +31,15 @@ const ast = p.parse()
 
 await Bun.write("ast.json", JSON.stringify(ast, null, 2))
 
+const mr = new ModuleResolver(ast)
+const m = mr.resolve()
+await Bun.write("modules.json", JSON.stringify(m, null, 2))
+
+const moduleTime = performance.now()
+console.log(`resolved modules in ${(moduleTime - lexerTime).toFixed(3)}ms`)
+
 const astTime = performance.now()
-console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
+console.log(`parsed ${t.length} tokens in ${(astTime - moduleTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
 const tc = new Typechecker(ast);
 const c = tc.check()
