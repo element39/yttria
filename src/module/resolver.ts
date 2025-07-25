@@ -42,7 +42,7 @@ export class ModuleResolver {
                 try {
                     file = readFileSync(loc, "utf8")
                 } catch (e) {
-                    throw new Error(`Failed to read ${loc}: ${e}`)
+                    throw new Error(`failed to read ${loc}: ${e}`)
                 }
                 const tok = new Lexer(file).lex()
                 const ast = new Parser(tok).parse()

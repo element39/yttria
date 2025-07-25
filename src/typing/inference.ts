@@ -52,21 +52,11 @@ export class TypeInferrer {
     }
 
     private inferVariableDeclaration(v: VariableDeclaration): VariableDeclaration {
-        const iv = v
+        const iv = v;
 
         let resolvedType: CheckerType;
-        if (iv.typeAnnotation) {
-            const valueType = this.getTypeByValue(iv.value)
-            const annotatedType = this.types[iv.typeAnnotation.value] || this.types["unknown"];
+        resolvedType = this.getTypeByValue(iv.value);
 
-            // Just annotate with the annotation, regardless of match
-            resolvedType = annotatedType;
-        }
-        else {
-            resolvedType = this.getTypeByValue(iv.value)
-        }
-        
-        // If we truly can't infer, fallback to unknown
         if (!resolvedType) resolvedType = this.types["unknown"];
 
         return {

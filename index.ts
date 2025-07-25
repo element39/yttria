@@ -1,12 +1,13 @@
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
-import { TypeInferrer } from "./src/typing/typeinferrer"
+import { TypeChecker } from "./src/typing/checker"
+import { TypeInferrer } from "./src/typing/inference"
 
 // error driven development right here
 const program = `
 pub fn main() {
-    const y := "hi"
+    const y: int = "hi"
 }
 `.trim()
 
@@ -34,11 +35,22 @@ const modTime = performance.now()
 console.log(`resolved ${Object.keys(mod).length} module(s) in ${(modTime - astTime).toFixed(3)}ms`)
 
 const ti = new TypeInferrer(ast)
-const ia = ti.infer()
-await Bun.write("tiAst.json", JSON.stringify(ia, null, 2))
+const tiAst = ti.infer()
+await Bun.write("tiAst.json", JSON.stringify(tiAst, null, 2))
 const inferTime = performance.now()
 
 console.log(`inferred types in ${(inferTime - modTime).toFixed(3)}ms`)
 
-const end = performance.now()
-console.log(`finished in ${(end - start).toFixed(3)}ms`)
+const tc = new TypeChecker(tiAst)
+const tce = tc.check()
+await Bun.write("tce.json", JSON.stringify(tce, null, 2))
+
+if (tce.length > 0) {
+    throw new Error(tce.join("\n"))
+}
+
+const checkTime = performance.now()
+
+console.log(`checked types in ${(checkTime - inferTime).toFixed(3)}ms`)
+
+console.log(`finished in ${(checkTime - start).toFixed(3)}ms`)

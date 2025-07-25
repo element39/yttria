@@ -5,7 +5,7 @@ out.ll
 out.s
 out.o
 ast.json
-tcAst.json
+tce.json
 tiAst.json
 tok.json
 modules.json
