@@ -6,7 +6,7 @@ import { TypeInferrer } from "./src/typing/typeinferrer"
 // error driven development right here
 const program = `
 pub fn main() {
-    const y: int = 42
+    const y := "hi"
 }
 `.trim()
 

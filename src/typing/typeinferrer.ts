@@ -15,6 +15,7 @@ export class TypeInferrer {
         bool:   { type: "CheckerType", name: "bool" },
         void:   { type: "CheckerType", name: "void" },
         null:   { type: "CheckerType", name: "null" },
+        unknown: { type: "CheckerType", name: "unknown" },
     }
 
     private table: { [key in ExpressionType]?: (expr: any) => Expression | null } = {
@@ -56,28 +57,17 @@ export class TypeInferrer {
         let resolvedType: CheckerType;
         if (iv.typeAnnotation) {
             const valueType = this.getTypeByValue(iv.value)
-            const annotatedType = this.types[iv.typeAnnotation.value];
-            if (!annotatedType) {
-                throw new Error(`unknown type annotation ${iv.typeAnnotation.value}`)
-            }
+            const annotatedType = this.types[iv.typeAnnotation.value] || this.types["unknown"];
 
-            if (valueType.name !== annotatedType.name) {
-                if (valueType.name === "int" && /^(int|i8|i16|i32|i64)$/.test(annotatedType.name)) {
-                    resolvedType = annotatedType;
-                } else {
-                    throw new Error(`type mismatch: expected ${annotatedType.name}, got ${valueType.name}`)
-                }
-            } else {
-                resolvedType = annotatedType;
-            }
-
+            // Just annotate with the annotation, regardless of match
             resolvedType = annotatedType;
         }
         else {
             resolvedType = this.getTypeByValue(iv.value)
         }
         
-        if (!resolvedType) throw new Error(`couldnt resolve type of value ${iv.value.type}`)
+        // If we truly can't infer, fallback to unknown
+        if (!resolvedType) resolvedType = this.types["unknown"];
 
         return {
             ...iv,
@@ -96,9 +86,9 @@ export class TypeInferrer {
             case "StringLiteral":
                 return this.types["string"]
             case "Identifier":
-                
+                return this.types["unknown"]
         } 
 
-        throw new Error(`couldnt get type of ${v.type}`)
+        return this.types["unknown"]
     }
 }
