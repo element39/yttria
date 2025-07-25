@@ -545,7 +545,6 @@ export class Parser {
 
         const alias = this.peek().literal
         this.advance()
-        console.log(this.peek())
         return {
             type: "ImportExpression",
             path,

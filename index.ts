@@ -1,17 +1,13 @@
-import { LLVMGen } from "./src/codegen/llvm/llvm"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
-import { Typechecker } from "./src/typechecker"
 
 // error driven development right here
 const program = `
 use std/io
 
-extern fn puts(text: string) -> int
-
 pub fn main() {
-    puts("hi mum!!!!!!!")
+    io.println("no hands!")
     return 2
 }
 `.trim()
@@ -30,73 +26,10 @@ const p = new Parser(t)
 const ast = p.parse()
 
 await Bun.write("ast.json", JSON.stringify(ast, null, 2))
-
-const mr = new ModuleResolver(ast)
-const m = mr.resolve()
-await Bun.write("modules.json", JSON.stringify(m, null, 2))
-
-const moduleTime = performance.now()
-console.log(`resolved modules in ${(moduleTime - lexerTime).toFixed(3)}ms`)
-
 const astTime = performance.now()
-console.log(`parsed ${t.length} tokens in ${(astTime - moduleTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
+console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
-const tc = new Typechecker(ast);
-const c = tc.check()
+const r = new ModuleResolver(ast)
+const i = r.resolve()
 
-await Bun.write("tcAst.json", JSON.stringify(c, null, 2))
-
-const typecheckTime = performance.now()
-
-console.log(`typechecked in ${(typecheckTime - astTime).toFixed(3)}ms`)
-
-const gen = new LLVMGen(c)
-const ll = gen.generate()
-
-await Bun.write("out.ll", ll)
-
-const llTime = performance.now()
-
-console.log(`generated ${(Buffer.byteLength(ll, 'utf8') / 1024).toFixed(3)}kB of LLVM IR in ${(llTime - typecheckTime).toFixed(3)}ms\n`)
-
-console.log("compiling to executable...")
-const llc = Bun.spawnSync(["llc", "out.ll", "-o", "out.s", "-O3"])
-if (llc.exitCode !== 0) {
-    console.error("llc failed with exit code", llc.exitCode)
-    if (llc.stdout) console.error("stdout:", llc.stdout.toString())
-    //@ts-ignore
-    if (llc.stderr) console.error("stderr:", llc.stderr.toString())
-    process.exit(1)
-}
-
-// Link to executable (Windows: out.exe, Linux/macOS: out)
-const linker = Bun.spawnSync([
-    "clang", "out.s", "-o", process.platform === "win32" ? "out.exe" : "out",
-])
-if (linker.exitCode !== 0) {
-    console.error("linker failed with exit code", linker.exitCode)
-    if (linker.stdout) console.error("stdout:", linker.stdout.toString())
-    //@ts-ignore
-    if (linker.stderr) console.error("stderr:", linker.stderr.toString())
-    process.exit(2)
-}
-
-const exeTime = performance.now()
-console.log(`compiled in ${(exeTime - llTime).toFixed(3)}ms`)
-console.log(`total compilation time: ${(exeTime - start).toFixed(3)}ms\n`)
-
-console.log(`running... program output:\n\n${"-".repeat(50)}\n`)
-const proc = Bun.spawn([
-    process.platform === "win32" ? ".\\out.exe" : "./out"
-], {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit"
-})
-
-const exitCode = await proc.exited
-console.log(`\n${"-".repeat(50)}\n\nexit code: ${exitCode}`)
-
-const run = performance.now()
-console.log(`total run time: ${(performance.now() - run).toFixed(3)}ms\n`)
-console.log(`total time: ${(run - start).toFixed(3)}ms`)
+console.log(r.modules)
