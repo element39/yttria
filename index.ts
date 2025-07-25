@@ -1,3 +1,4 @@
+import { LLVMGen } from "./src/gen/llvm"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
@@ -6,8 +7,9 @@ import { TypeInferrer } from "./src/typing/inference"
 
 // error driven development right here
 const program = `
+import std/io
 pub fn main() {
-    const y: int = "hi"
+    io.println("hi")
 }
 `.trim()
 
@@ -28,29 +30,37 @@ const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
 const r = new ModuleResolver(ast)
-const mod = r.resolve()
-await Bun.write("modules.json", JSON.stringify(mod, null, 2))
+const modules = r.resolve()
+await Bun.write("modules.json", JSON.stringify(modules, null, 2))
 const modTime = performance.now()
 
-console.log(`resolved ${Object.keys(mod).length} module(s) in ${(modTime - astTime).toFixed(3)}ms`)
+console.log(`resolved ${Object.keys(modules).length} module(s) in ${(modTime - astTime).toFixed(3)}ms`)
 
-const ti = new TypeInferrer(ast)
-const tiAst = ti.infer()
-await Bun.write("tiAst.json", JSON.stringify(tiAst, null, 2))
-const inferTime = performance.now()
+const bundle = { ...modules, program: { ast } }
 
-console.log(`inferred types in ${(inferTime - modTime).toFixed(3)}ms`)
+for (const [name, module] of Object.entries(bundle)) {
+    console.log(`processing module: ${name}`)
 
-const tc = new TypeChecker(tiAst)
-const tce = tc.check()
-await Bun.write("tce.json", JSON.stringify(tce, null, 2))
+    const ti = new TypeInferrer(module.ast)
+    const tiAst = ti.infer()
 
-if (tce.length > 0) {
-    throw new Error(tce.join("\n"))
+    const tc = new TypeChecker(tiAst)
+    const tce = tc.check()
+
+    if (tce.length > 0) {
+        throw new Error(`type errors in module "${name}":\n${tce.join("\n")}`)
+    }
+
+    const cg = new LLVMGen(tiAst, name)
+    const llvmIR = cg.generate()
+    
+    await Bun.write(`${name === "program" ? "tiAst" : name.replace(/\//g, "_")}.json`, JSON.stringify(tiAst, null, 2))
+    await Bun.write(`${name === "program" ? "main" : name.replace(/\//g, "_")}.ll`, llvmIR)
+    
+    cg.writeToFile(`out/${name === "program" ? "main" : name.replace(/\//g, "_")}.o`)
+    console.log(`generated code for module "${name}"`)
 }
 
 const checkTime = performance.now()
-
-console.log(`checked types in ${(checkTime - inferTime).toFixed(3)}ms`)
 
 console.log(`finished in ${(checkTime - start).toFixed(3)}ms`)

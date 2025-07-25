@@ -17,6 +17,18 @@ all contributions are welcome, whether it’s code, docs, tests, or ideas.
 - open a pull request with a clear but small description of your changes
 - be respectful and constructive in discussions
 
+## setup
+```sh
+git clone https://github.com/grngxd/yttria
+cd yttria
+
+# install bun (https://bun.sh)
+bun i
+
+# install llvm (14.0.x) e.g. 14.0.6
+bun run --watch .
+```
+
 ## style guide
 
 - PascalCase for constants & types, camelCase for variables & functions

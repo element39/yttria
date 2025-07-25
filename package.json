@@ -4,5 +4,8 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.18"
-  }
+  },
+  "trustedDependencies": [
+    "llvm-bindings"
+  ]
 }

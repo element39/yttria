@@ -6,51 +6,47 @@ import { ImportExpression, ProgramExpression } from "../parser/ast";
 import { ResolvedModule } from "./types";
 
 export class ModuleResolver {
-    private ast: ProgramExpression
-    public modules: { [key: string]: ResolvedModule } = {}
+    private ast: ProgramExpression;
+    public modules: { [key: string]: ResolvedModule } = {};
 
     constructor(ast: ProgramExpression) {
-        this.ast = ast
+        this.ast = ast;
     }
 
     resolve() {
         for (const expr of this.ast.body) {
-            if (expr.type !== "ImportExpression") continue
-            const ixpr = expr as ImportExpression
+            if (expr.type !== "ImportExpression") continue;
+            const ixpr = expr as ImportExpression;
 
-            const dir = readdirSync(
-                path.resolve(
-                    path.join("./src/module", ixpr.path)
-                )
-            )
-            .filter(loc => loc.endsWith(".yt"))
-            .map(
-                loc => path.resolve(
-                    path.join("./src/module", ixpr.path, loc)
-                )
-            )
+            if (this.modules[ixpr.path]) continue;
 
-            const m: ResolvedModule = {
-                ast: {
-                    type: "Program",
-                    body: []
-                }
-            }
+            const moduleDir = path.resolve(path.join("./src/module", ixpr.path));
+            const files = readdirSync(moduleDir)
+                .filter((file) => file.endsWith(".yt"))
+                .map((file) => path.resolve(path.join(moduleDir, file)));
 
-            for (const loc of dir) {
-                let file: string
+            const mergedAst: ProgramExpression = { type: "Program", body: [] };
+
+            for (const file of files) {
+                let fileContent: string;
                 try {
-                    file = readFileSync(loc, "utf8")
+                    fileContent = readFileSync(file, "utf8");
                 } catch (e) {
-                    throw new Error(`failed to read ${loc}: ${e}`)
+                    throw new Error(`Failed to read ${file}: ${e}`);
                 }
-                const tok = new Lexer(file).lex()
-                const ast = new Parser(tok).parse()
-                m.ast.body = [...m.ast.body, ...ast.body]
+
+                const tokens = new Lexer(fileContent).lex();
+                const fileAst = new Parser(tokens).parse();
+                mergedAst.body.push(...fileAst.body);
             }
 
-            this.modules[ixpr.path] = m
+            this.modules[ixpr.path] = { ast: mergedAst };
+
+            const resolver = new ModuleResolver(mergedAst);
+            const subModules = resolver.resolve();
+            Object.assign(this.modules, subModules);
         }
-        return this.modules
+
+        return this.modules;
     }
 }
