@@ -4,8 +4,6 @@ import { CheckerType } from "./types";
 export class TypeInferrer {
     private ast: ProgramExpression
     private inferred: ProgramExpression = { type: "Program", body: [] }
-
-    // TODO: FIX ALL I* TYPES: error: type mismatch: expected i32, got int
     private types: Record<string, CheckerType> = {
         int:    { type: "CheckerType", name: "int" },
         i8:     { type: "CheckerType", name: "i8" },
@@ -57,14 +55,20 @@ export class TypeInferrer {
 
         let resolvedType: CheckerType;
         if (iv.typeAnnotation) {
-            const vType = this.getTypeByValue(iv.value)
+            const valueType = this.getTypeByValue(iv.value)
             const annotatedType = this.types[iv.typeAnnotation.value];
             if (!annotatedType) {
                 throw new Error(`unknown type annotation ${iv.typeAnnotation.value}`)
             }
 
-            if (vType.name !== annotatedType.name) {
-                throw new Error(`type mismatch: expected ${annotatedType.name}, got ${vType.name}`)
+            if (valueType.name !== annotatedType.name) {
+                if (valueType.name === "int" && /^(int|i8|i16|i32|i64)$/.test(annotatedType.name)) {
+                    resolvedType = annotatedType;
+                } else {
+                    throw new Error(`type mismatch: expected ${annotatedType.name}, got ${valueType.name}`)
+                }
+            } else {
+                resolvedType = annotatedType;
             }
 
             resolvedType = annotatedType;
