@@ -7,38 +7,30 @@ import { ResolvedModule } from "./types";
 
 export class ModuleResolver {
     private ast: ProgramExpression
-    public modules: ResolvedModule[] = []
+    public modules: { [key: string]: ResolvedModule } = {}
 
     constructor(ast: ProgramExpression) {
         this.ast = ast
     }
 
-    resolve(visited = new Set<string>()) {
-        const imports: ImportExpression[] = []
+    resolve() {
         for (const expr of this.ast.body) {
             if (expr.type !== "ImportExpression") continue
-            imports.push(expr as ImportExpression)
+            const ixpr = expr as ImportExpression
+
             const dir = readdirSync(
                 path.resolve(
-                    path.join(
-                        "./src/module",
-                        (expr as ImportExpression).path
-                    )
+                    path.join("./src/module", ixpr.path)
                 )
             )
             .filter(loc => loc.endsWith(".yt"))
             .map(
                 loc => path.resolve(
-                    path.join(
-                        "./src/module",
-                        (expr as ImportExpression).path,
-                        loc
-                    )
+                    path.join("./src/module", ixpr.path, loc)
                 )
             )
 
             const m: ResolvedModule = {
-                path: (expr as ImportExpression).path,
                 ast: {
                     type: "Program",
                     body: []
@@ -46,10 +38,7 @@ export class ModuleResolver {
             }
 
             for (const loc of dir) {
-                if (visited.has(loc)) continue
-                visited.add(loc)
                 let file: string
-
                 try {
                     file = readFileSync(loc, "utf8")
                 } catch (e) {
@@ -58,17 +47,10 @@ export class ModuleResolver {
                 const tok = new Lexer(file).lex()
                 const ast = new Parser(tok).parse()
                 m.ast.body = [...m.ast.body, ...ast.body]
-
-                const resolver = new ModuleResolver(ast)
-                const nestedImports = resolver.resolve(visited)
-                for (const ni of nestedImports) {
-                    if (!imports.includes(ni)) imports.push(ni)
-                }
             }
 
-            this.modules = [...this.modules, m]
+            this.modules[ixpr.path] = m
         }
-        
-        return imports
+        return this.modules
     }
 }
