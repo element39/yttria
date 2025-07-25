@@ -82,7 +82,7 @@ export class Parser {
             else if (this.peek().literal === ".") {
                 this.advance();
                 if (this.peek().type !== "Identifier") {
-                    throw new Error("Expected identifier after '.'");
+                    throw new Error("expected identifier after '.'");
                 }
                 const property = {
                     type: "Identifier",
@@ -104,7 +104,7 @@ export class Parser {
                 if (this.peek().literal !== ")") {
                     while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
                         const arg = this.parseExpression();
-                        if (!arg) throw new Error("Expected expression in function call");
+                        if (!arg) throw new Error("expected expression in function call");
                         args.push(arg);
                         
                         if (this.peek().literal === ",") {
@@ -114,7 +114,7 @@ export class Parser {
                 }
                 
                 if (this.peek().literal !== ")") {
-                    throw new Error("Expected ')' to close function call");
+                    throw new Error("expected ')' to close function call");
                 }
                 this.advance();
                 
@@ -154,7 +154,7 @@ export class Parser {
             this.advance()
             const expr = this.parseExpression()
             if (this.peek().literal !== ")") {
-                throw new Error("Expected ')' after expression")
+                throw new Error("expected ')' after expression")
             }
             this.advance()
             return expr
@@ -164,7 +164,7 @@ export class Parser {
         if (t.type === "Operator" && (t.literal === "-" || t.literal === "!")) {
             this.advance()
             const operand = this.parseExpression(100)
-            if (!operand) throw new Error("Expected expression after unary operator")
+            if (!operand) throw new Error("expected expression after unary operator")
             return {
                 type: "PreUnaryExpression",
                 operator: t.literal,
@@ -248,13 +248,13 @@ export class Parser {
             // no type annotation
             // var x := 5
             if (this.peek().literal !== ":=") {
-                throw new Error("Expected ':=' after variable name")
+                throw new Error("expected ':=' after variable name")
             }
 
             this.advance()
             const value = this.parseExpression()
             if (!value) {
-                throw new Error("Expected value after ':='")
+                throw new Error("expected value after ':='")
             }
 
             return {
@@ -273,13 +273,13 @@ export class Parser {
 
         this.advance()
         if (this.peek().literal !== "=") {
-            throw new Error("Expected '=' after type annotation")
+            throw new Error("expected '=' after type annotation")
         }
 
         this.advance()
         const value = this.parseExpression()
         if (!value) {
-            throw new Error("Expected value after '='")
+            throw new Error("expected value after '='")
         }
 
         return {
@@ -308,7 +308,7 @@ export class Parser {
         this.advance()
 
         if (this.peek().literal !== "(") {
-            throw new Error("Expected '(' after function name")
+            throw new Error("expected '(' after function name")
         }
 
         const params: FunctionParam[] = []
@@ -323,7 +323,7 @@ export class Parser {
                 this.advance()
 
                 if (this.peek().literal !== ":") {
-                    throw new Error("Expected ':' after parameter name")
+                    throw new Error("expected ':' after parameter name")
                 }
 
                 const type: Identifier = {
@@ -384,7 +384,7 @@ export class Parser {
     private parseBlock(): Expression[] {
         const body: Expression[] = []
         if (this.peek().literal !== "{") {
-            throw new Error(`Expected "{" to start function body, got "${this.peek().literal}"`)
+            throw new Error(`expected "{" to start function body, got "${this.peek().literal}"`)
         }
 
         this.advance()
@@ -414,7 +414,7 @@ export class Parser {
     private parseIfExpression(): IfExpression {
         const condition = this.parseExpression(0, this.advance())
         if (!condition) {
-            throw new Error("Expected condition after 'if'")
+            throw new Error("expected condition after 'if'")
         }
         this.advance()
         const body = this.parseBlock()
@@ -449,7 +449,7 @@ export class Parser {
     private parseWhileExpression(): WhileExpression {
         const condition = this.parseExpression(0, this.advance())
         if (!condition) {
-            throw new Error("Expected condition after 'while'")
+            throw new Error("expected condition after 'while'")
         }
         this.advance()
         const body = this.parseBlock()
@@ -463,11 +463,11 @@ export class Parser {
     private parseSwitchExpression(): SwitchExpression {
         const value = this.parseExpression(0, this.advance())
         if (!value) {
-            throw new Error("Expected value after 'switch'")
+            throw new Error("expected value after 'switch'")
         }
 
         if (this.advance().literal !== "{") {
-            throw new Error("Expected '{' after switch value")
+            throw new Error("expected '{' after switch value")
         }
         this.advance()
 
@@ -490,13 +490,13 @@ export class Parser {
                 }
                 const val = this.parseExpression(0)
                 if (!val) {
-                    throw new Error("Expected case value")
+                    throw new Error("expected case value")
                 }
                 return val
             })()
 
             if (this.peek().literal !== "->") {
-                throw new Error("Expected '->' after case value")
+                throw new Error("expected '->' after case value")
             }
             this.advance()
             
@@ -540,12 +540,11 @@ export class Parser {
         this.advance()
 
         if (this.peek().type !== "Identifier") {
-            throw new Error(`Expected identifier after "as", got "${this.peek().literal}"`)
+            throw new Error(`expected identifier after "as", got "${this.peek().literal}"`)
         }
 
         const alias = this.peek().literal
         this.advance()
-        console.log(this.peek())
         return {
             type: "ImportExpression",
             path,

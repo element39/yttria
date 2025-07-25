@@ -1,0 +1,3 @@
+extern fn puts(text: string) -> int
+extern fn printf(format: string) -> int
+extern fn scanf(format: string) -> int

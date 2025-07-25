@@ -1,8 +1,5 @@
-import { Expression, ImportExpression, ProgramExpression } from "../parser/ast";
+import { ProgramExpression } from "../parser/ast"
 
 export type ResolvedModule = {
-    files: string[];
-    merged: ProgramExpression;
-    imports: ImportExpression[];
-    exports: Expression[];
+    ast: ProgramExpression
 }
