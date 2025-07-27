@@ -1,11 +1,3 @@
 node_modules
 
-out.exe
-out.ll
-out.s
-out.o
-ast.json
-tce.json
-tiAst.json
-tok.json
-modules.json
+out

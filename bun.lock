@@ -3,7 +3,7 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "bun-llvm": "^0.0.1",
+        "bun-llvm": "^0.0.4",
         "cmake-js": "^7.3.1",
       },
       "devDependencies": {
@@ -11,6 +11,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "bun-llvm",
+  ],
   "overrides": {
     "cmake-js": "7.3.1",
   },
@@ -33,7 +36,7 @@
 
     "axios": ["axios@1.11.0", "", { "dependencies": { "follow-redirects": "^1.15.6", "form-data": "^4.0.4", "proxy-from-env": "^1.1.0" } }, "sha512-1Lx3WLFQWm3ooKDYZD1eXmoGO9fxYQjrycfHFC8P0sCfQVXyROp0p9PFWBehewBOdCwHc+f/b8I0fMto5eSfwA=="],
 
-    "bun-llvm": ["bun-llvm@0.0.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-guKqaxXxzCjkG/SMQDQg1i2TEeVmbfvTZMtLNlSP0OataMI8+RUOM0ZuFj+GRNmGbYn982SLWmJ2AblndtST+Q=="],
+    "bun-llvm": ["bun-llvm@0.0.4", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-jgPCBLEENl+Xw1bhHHjoFc4EGJLqWoW8kivYJEgPVdkgY6iIDhOBH8nERExcV+N1FnXH1+XwFXwOb9Z6cQIPXQ=="],
 
     "bun-types": ["bun-types@1.2.19", "", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-uAOTaZSPuYsWIXRpj7o56Let0g/wjihKCkeRqUBhlLVM/Bt+Fj9xTo+LhC1OV1XDaGkz4hNC80et5xgy+9KTHQ=="],
 
