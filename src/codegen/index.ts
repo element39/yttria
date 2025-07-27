@@ -1,15 +1,16 @@
 import { FunctionType, Linkage, Type, Value } from "bun-llvm";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, ProgramExpression, ReturnExpression } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
     private ast: ProgramExpression;
     private helper: LLVMHelper;
-    private scopes: Array<Record<string, Value>> = [];
+    private scopes: Array<Record<string, { value: Value, isPointer: boolean }>> = [];
     
     private table: { [key in ExpressionType]?: (e: any) => Value | null } = {
         FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
+        VariableDeclaration: this.genVariableDeclaration.bind(this)
     };
 
     types: { [key: string]: Type }
@@ -43,7 +44,7 @@ export class Codegen {
 
         const paramTy = expr.params.map(p => this.getType(p.paramType.value));
 
-        const scope: Record<string, Value> = {};
+        const scope: Record<string, { value: Value, isPointer: boolean }> = {};
         this.scopes.push(scope);
 
         const fn = this.helper.fn(
@@ -52,10 +53,10 @@ export class Codegen {
             { linkage: (expr.modifiers.includes("pub") || expr.modifiers.includes("extern")) ? Linkage.External : Linkage.Internal }
         );
 
-        for (let i = 0; i < expr.params.length; ++i) {
-            const paramName = expr.params[i].name.value;
-            scope[paramName] = fn.getArg(i);
-        }
+        expr.params.forEach((param, i) => {
+            const paramName = param.name.value;
+            scope[paramName] = { value: fn.getArg(i), isPointer: false };
+        });
 
         for (const e of expr.body) {
             if (e.type in this.table) {
@@ -76,6 +77,17 @@ export class Codegen {
         return null;
     }
 
+    private genVariableDeclaration(expr: VariableDeclaration): Value | null {
+        const varName = expr.name.value;
+        const varType = this.getType(expr.typeAnnotation?.value || expr.resolvedType?.name || "int");
+        const value = this.genExpression(expr.value, varType);
+        if (!value) throw new Error(`Failed to generate value for variable ${expr.name.value}`);
+        const alloca = this.helper.builder.alloca(varType, expr.name.value);
+        this.helper.builder.store(value, alloca);
+        this.scopes[this.scopes.length - 1][varName] = { value: alloca, isPointer: true };
+        return null;
+    }
+
     private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
             
@@ -91,7 +103,12 @@ export class Codegen {
             Identifier: (expr: any) => {
                 const found = [...this.scopes].reverse().find(scope => expr.value in scope);
                 if (found) {
-                    return found[expr.value];
+                    const entry = found[expr.value];
+                    if (entry.isPointer) {
+                        return this.helper.builder.load(entry.value);
+                    } else {
+                        return entry.value;
+                    }
                 }
                 throw new Error(`Undefined variable: ${expr.value}`);
             },
@@ -99,7 +116,7 @@ export class Codegen {
             BinaryExpression: (expr: BinaryExpression, expectedType) => {
                 const left = this.genExpression(expr.left, expectedType);
                 const right = this.genExpression(expr.right, expectedType);
-                if (!left || !right) return null;
+                if (!left || !right) throw new Error(`failed to generate binary expression: ${expr.operator}`);
 
                 switch (expr.operator) {
                     case "+":

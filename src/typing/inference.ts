@@ -1,4 +1,4 @@
-import { CaseExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast";
+import { BinaryExpression, CaseExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast";
 import { CheckerType } from "./types";
 
 export class TypeInferrer {
@@ -23,6 +23,8 @@ export class TypeInferrer {
         VariableDeclaration: this.inferVariableDeclaration.bind(this),
     }
 
+    private environment: Array<Record<string, CheckerType>> = [];
+
     constructor(ast: ProgramExpression) {
         this.ast = ast
     }
@@ -34,63 +36,15 @@ export class TypeInferrer {
                 if (txpr) this.inferred.body = [...this.inferred.body, txpr]
             }
         }
-
         return this.inferred
     }
 
     private inferFunctionDeclaration(fn: FunctionDeclaration): FunctionDeclaration {
-        const walk = (expr: Expression): boolean => {
-            switch (expr.type) {
-                case "ReturnExpression":
-                    return true;
-                case "IfExpression": {
-                    const ifExpr = expr as any;
-                    let found = false;
-                    for (const stmt of ifExpr.body) {
-                        if (walk(stmt)) found = true;
-                    }
-                    if (ifExpr.alternate) {
-                        if (walk(ifExpr.alternate)) found = true;
-                    }
-                    return found;
-                }
-                case "ElseExpression": {
-                    const elseExpr = expr as any;
-                    let found = false;
-                    for (const stmt of elseExpr.body) {
-                        if (walk(stmt)) found = true;
-                    }
-                    return found;
-                }
-                case "WhileExpression": {
-                    const whileExpr = expr as any;
-                    let found = false;
-                    for (const stmt of whileExpr.body) {
-                        if (walk(stmt)) found = true;
-                    }
-                    return found;
-                }
-                case "SwitchExpression": {
-                    const switchExpr = expr as any;
-                    let found = false;
-                    for (const caseExpr of switchExpr.cases) {
-                        if (walk(caseExpr)) found = true;
-                    }
-                    return found;
-                }
-                case "CaseExpression": {
-                    const caseExpr = expr as any;
-                    let found = false;
-                    for (const stmt of caseExpr.body) {
-                        if (walk(stmt)) found = true;
-                    }
-                    return found;
-                }
-                default:
-                    return false;
-            }
-        };
-
+        const env: Record<string, CheckerType> = {};
+        for (const param of fn.params) {
+            env[param.name.value] = this.types[param.paramType.value] ?? this.types["unknown"];
+        }
+        this.environment.push(env);
         let resolvedReturnType: CheckerType | undefined = undefined;
         if (fn.returnType) {
             resolvedReturnType = this.types[fn.returnType.value] ?? this.types["unknown"];
@@ -100,7 +54,6 @@ export class TypeInferrer {
                 switch (expr.type) {
                     case "ReturnExpression":
                         return this.getTypeByValue((expr as ReturnExpression).value);
-
                     case "IfExpression":
                         const ixpr = expr as IfExpression;
                         for (const stmt of ixpr.body) {
@@ -112,7 +65,6 @@ export class TypeInferrer {
                             if (t) return t;
                         }
                         break;
-
                     case "ElseExpression":
                         const eexpr = expr as ElseExpression;
                         for (const stmt of eexpr.body) {
@@ -120,8 +72,6 @@ export class TypeInferrer {
                             if (t) return t;
                         }
                         break;
-                    
-
                     case "WhileExpression": 
                         const wxpr = expr as WhileExpression;
                         for (const stmt of wxpr.body) {
@@ -129,8 +79,6 @@ export class TypeInferrer {
                             if (t) return t;
                         }
                         break;
-                    
-
                     case "SwitchExpression": 
                         const sxpr = expr as SwitchExpression;
                         for (const caseExpr of sxpr.cases) {
@@ -138,8 +86,6 @@ export class TypeInferrer {
                             if (t) return t;
                         }
                         break;
-                    
-
                     case "CaseExpression": 
                         const cxpr = expr as CaseExpression;
                         for (const stmt of cxpr.body) {
@@ -148,10 +94,8 @@ export class TypeInferrer {
                         }
                         break;
                 }
-
                 return undefined;
             };
-
             for (const stmt of fn.body) {
                 const t = findReturnType(stmt);
                 if (t) {
@@ -161,8 +105,7 @@ export class TypeInferrer {
             }
             resolvedReturnType = foundType ?? this.types["unknown"];
         }
-
-        return {
+        const result = {
             ...fn,
             resolvedReturnType,
             body: fn.body.map(xpr => {
@@ -173,16 +116,18 @@ export class TypeInferrer {
                 return xpr
             })
         };
+        this.environment.pop();
+        return result;
     }
 
     private inferVariableDeclaration(v: VariableDeclaration): VariableDeclaration {
         const iv = v;
-
         let resolvedType: CheckerType;
         resolvedType = this.getTypeByValue(iv.value);
-
         if (!resolvedType) resolvedType = this.types["unknown"];
-
+        if (this.environment.length > 0) {
+            this.environment[this.environment.length - 1][iv.name.value] = resolvedType;
+        }
         return {
             ...iv,
             resolvedType
@@ -191,18 +136,34 @@ export class TypeInferrer {
 
     private getTypeByValue(v: Expression): CheckerType {
         switch (v.type) {
-            case "NumberLiteral":
-                const nl = v as NumberLiteral
-                if (Number.isInteger(nl.value)) return this.types["int"]
-                return this.types["float"]
+            case "NumberLiteral": {
+                const nl = v as NumberLiteral;
+                if (Number.isInteger(nl.value)) return this.types["int"];
+                return this.types["float"];
+            }
             case "BooleanLiteral":
-                return this.types["bool"]
+                return this.types["bool"];
             case "StringLiteral":
-                return this.types["string"]
-            case "Identifier":
-                return this.types["unknown"]
-        } 
-
-        return this.types["unknown"]
+                return this.types["string"];
+            case "Identifier": {
+                const name = (v as any).value;
+                for (let i = this.environment.length - 1; i >= 0; --i) {
+                    if (name in this.environment[i]) {
+                        return this.environment[i][name];
+                    }
+                }
+                return this.types["unknown"];
+            }
+            case "BinaryExpression": {
+                const be = v as BinaryExpression;
+                const leftType = this.getTypeByValue(be.left);
+                const rightType = this.getTypeByValue(be.right);
+                if (leftType === rightType && leftType !== this.types["unknown"]) {
+                    return leftType;
+                }
+                return this.types["unknown"];
+            }
+        }
+        return this.types["unknown"];
     }
 }

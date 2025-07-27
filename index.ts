@@ -18,7 +18,8 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 pub fn add(a: i16, b: i16) -> i16 {
-    return a + b
+    let c: i16 = a + b
+    return a + b + c
 }
 `.trim()
 
@@ -59,7 +60,7 @@ for (const [name, mod] of Object.entries(modules)) {
     const tc = new TypeChecker(ist)
     const cst = tc.check()
     if (cst.length > 0) {
-        throw new Error(`type errors in ${name}:\n${cst.join("\n")}`);
+        throw new Error(`type errors in ${name}:\n  ${cst.join("\n  ")}`);
     }
 
     const checkTime = performance.now()
