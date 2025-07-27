@@ -96,6 +96,7 @@ export class TypeInferrer {
                 }
                 return undefined;
             };
+
             for (const stmt of fn.body) {
                 const t = findReturnType(stmt);
                 if (t) {
@@ -103,7 +104,7 @@ export class TypeInferrer {
                     break;
                 }
             }
-            resolvedReturnType = foundType ?? this.types["unknown"];
+            resolvedReturnType = foundType ?? this.types["void"];
         }
         const result = {
             ...fn,

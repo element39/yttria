@@ -19,9 +19,11 @@ export class LLVMHelper {
 
     fn(name: string, fnType: FunctionType, opts?: {
         linkage?: Linkage;
+        extern?: boolean;
     }): Func {
-        const func = this.mod.createFunction(name, fnType, opts ?? { linkage: Linkage.External });
-        this.builder.insertInto(func.addBlock("entry"));
+        const func = this.mod.createFunction(name, fnType, opts ?? { linkage: Linkage.External, extern: false });
+        if (!opts?.extern)   this.builder.insertInto(func.addBlock("entry"));
+
         this.currentFunction = func;
         return func;
     }

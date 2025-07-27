@@ -50,18 +50,29 @@ export class Codegen {
         const fn = this.helper.fn(
             expr.name.value,
             new FunctionType(paramTy, retTy, false),
-            { linkage: (expr.modifiers.includes("pub") || expr.modifiers.includes("extern")) ? Linkage.External : Linkage.Internal }
+            {
+                linkage: (expr.modifiers.includes("pub") || expr.modifiers.includes("extern")) ? Linkage.External : Linkage.Internal,
+                extern: expr.modifiers.includes("extern")
+            }
         );
-
+        
         expr.params.forEach((param, i) => {
             const paramName = param.name.value;
             scope[paramName] = { value: fn.getArg(i), isPointer: false };
         });
 
-        for (const e of expr.body) {
-            if (e.type in this.table) {
-                const gen = this.table[e.type];
-                gen && gen(e);
+        if (!expr.modifiers.includes("extern")) {
+            let hasReturn = false;
+            for (const e of expr.body) {
+                if (e.type === "ReturnExpression") hasReturn = true;
+                if (e.type in this.table) {
+                    const gen = this.table[e.type];
+                    gen && gen(e);
+                }
+            }
+
+            if (!hasReturn && expr.resolvedReturnType?.name === "void") {
+                this.helper.builder.ret();
             }
         }
 
@@ -80,10 +91,13 @@ export class Codegen {
     private genVariableDeclaration(expr: VariableDeclaration): Value | null {
         const varName = expr.name.value;
         const varType = this.getType(expr.typeAnnotation?.value || expr.resolvedType?.name || "int");
+
         const value = this.genExpression(expr.value, varType);
         if (!value) throw new Error(`Failed to generate value for variable ${expr.name.value}`);
+
         const alloca = this.helper.builder.alloca(varType, expr.name.value);
         this.helper.builder.store(value, alloca);
+
         this.scopes[this.scopes.length - 1][varName] = { value: alloca, isPointer: true };
         return null;
     }
