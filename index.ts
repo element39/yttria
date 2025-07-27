@@ -1,4 +1,4 @@
-import { rmSync } from "fs"
+import { existsSync, mkdirSync, rmSync } from "fs"
 import { Codegen } from "./src/codegen"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
@@ -19,7 +19,7 @@ rmSync("./out", { recursive: true, force: true })
 const program = `
 
 fn fib(n: int) -> int {
-    return n + 1
+    return n + 9
 }
 
 pub fn main() -> int {
@@ -81,4 +81,38 @@ for (const [name, mod] of Object.entries(modules)) {
 
 const end = performance.now()
 
-console.log(`finished in ${(end - start).toFixed(3)}ms`)
+console.log(`finished building in ${(end - start).toFixed(3)}ms\n`)
+
+if (!existsSync("./objects")) {
+    mkdirSync("./objects")
+}
+
+for (const [name] of Object.entries(modules)) {
+    Bun.spawnSync({
+        cmd: ["llc", `./out/${name}.ll`, "-filetype=obj", "-o", `./objects/${name}.o`],
+        stdout: "inherit",
+        stderr: "inherit",
+    })
+}
+
+import { readdirSync } from "fs"
+const objectFiles = readdirSync("./objects")
+    .filter(f => f.endsWith(".o"))
+    .map(f => `./objects/${f}`)
+
+Bun.spawnSync({
+    cmd: ["gcc", ...objectFiles, "-o", "./out/executable.exe"],
+    stdout: "inherit",
+    stderr: "inherit",
+})
+
+console.log("executable output:\n")
+
+const exe = Bun.spawnSync({
+    cmd: ["./out/executable.exe"],
+    stdout: "inherit",
+    stderr: "inherit",
+})
+
+
+console.log("exit code:", exe.exitCode)
