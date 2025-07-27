@@ -12,7 +12,7 @@
 <!-- https://ascii.bar -->
 
 ### language core
-current version: `v0.0.2-alpha.2`
+current version: `v0.0.2-alpha.3`
 ```
   item              xx%      progress  bar      time until complete (from last task)
 

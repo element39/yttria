@@ -47,13 +47,14 @@ const modTime = performance.now()
 console.log(`resolved ${Object.keys(modules).length} module(s) in ${(modTime - astTime).toFixed(3)}ms\n`)
 
 for (const [name, mod] of Object.entries(modules)) {
+    console.log(`${name}:`)
     const start = performance.now()
     
     const ti = new TypeInferrer(mod.ast)
     const ist = ti.infer()
 
     const infTime = performance.now()
-    console.log(`inferred types for ${name} in ${(infTime - start).toFixed(3)}ms`)
+    console.log(`   inferred types in ${(infTime - start).toFixed(3)}ms`)
 
     const tc = new TypeChecker(ist)
     const cst = tc.check()
@@ -62,7 +63,7 @@ for (const [name, mod] of Object.entries(modules)) {
     }
 
     const checkTime = performance.now()
-    console.log(`checked types for ${name} in ${(checkTime - infTime).toFixed(3)}ms`)
+    console.log(`   checked types in ${(checkTime - infTime).toFixed(3)}ms`)
 
     const cg = new Codegen(name, ist)
     const code = cg.generate()
@@ -70,8 +71,9 @@ for (const [name, mod] of Object.entries(modules)) {
     await Bun.write(`out/${name}.ll`, code)
 
     const genTime = performance.now()
-    console.log(`generated code for ${name} in ${(genTime - checkTime).toFixed(3)}ms`)
-    console.log(`total time for ${name}: ${(genTime - start).toFixed(3)}ms\n`)
+    console.log(`   generated code in ${(genTime - checkTime).toFixed(3)}ms\n`)
 }
 
-console.log(`finished in ${(modTime - start).toFixed(3)}ms`)
+const end = performance.now()
+
+console.log(`finished in ${(end - start).toFixed(3)}ms`)

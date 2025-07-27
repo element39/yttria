@@ -1,5 +1,5 @@
 import { FunctionType, Linkage, Type, Value } from "bun-llvm";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, ProgramExpression, ReturnExpression } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -78,10 +78,16 @@ export class Codegen {
 
     private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
-            NumberLiteral: (expr: NumberLiteral, expectedType) => {
+            
+            NumberLiteral: (expr, expectedType) => {
                 const t = expectedType ?? Type.int32(this.helper.ctx);
                 return Value.constInt(t, expr.value);
             },
+            
+            BooleanLiteral: (expr, expectedType) => {
+                return Value.constInt(Type.int1(this.helper.ctx), expr.value ? 1 : 0);
+            },
+
             Identifier: (expr: any) => {
                 const found = [...this.scopes].reverse().find(scope => expr.value in scope);
                 if (found) {
@@ -89,6 +95,7 @@ export class Codegen {
                 }
                 throw new Error(`Undefined variable: ${expr.value}`);
             },
+
             BinaryExpression: (expr: BinaryExpression, expectedType) => {
                 const left = this.genExpression(expr.left, expectedType);
                 const right = this.genExpression(expr.right, expectedType);
