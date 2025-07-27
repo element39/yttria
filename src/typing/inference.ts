@@ -1,4 +1,4 @@
-import { Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ProgramExpression, VariableDeclaration } from "../parser/ast";
+import { CaseExpression, ElseExpression, Expression, ExpressionType, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration, WhileExpression } from "../parser/ast";
 import { CheckerType } from "./types";
 
 export class TypeInferrer {
@@ -39,8 +39,132 @@ export class TypeInferrer {
     }
 
     private inferFunctionDeclaration(fn: FunctionDeclaration): FunctionDeclaration {
+        const walk = (expr: Expression): boolean => {
+            switch (expr.type) {
+                case "ReturnExpression":
+                    return true;
+                case "IfExpression": {
+                    const ifExpr = expr as any;
+                    let found = false;
+                    for (const stmt of ifExpr.body) {
+                        if (walk(stmt)) found = true;
+                    }
+                    if (ifExpr.alternate) {
+                        if (walk(ifExpr.alternate)) found = true;
+                    }
+                    return found;
+                }
+                case "ElseExpression": {
+                    const elseExpr = expr as any;
+                    let found = false;
+                    for (const stmt of elseExpr.body) {
+                        if (walk(stmt)) found = true;
+                    }
+                    return found;
+                }
+                case "WhileExpression": {
+                    const whileExpr = expr as any;
+                    let found = false;
+                    for (const stmt of whileExpr.body) {
+                        if (walk(stmt)) found = true;
+                    }
+                    return found;
+                }
+                case "SwitchExpression": {
+                    const switchExpr = expr as any;
+                    let found = false;
+                    for (const caseExpr of switchExpr.cases) {
+                        if (walk(caseExpr)) found = true;
+                    }
+                    return found;
+                }
+                case "CaseExpression": {
+                    const caseExpr = expr as any;
+                    let found = false;
+                    for (const stmt of caseExpr.body) {
+                        if (walk(stmt)) found = true;
+                    }
+                    return found;
+                }
+                default:
+                    return false;
+            }
+        };
+
+        let resolvedReturnType: CheckerType | undefined = undefined;
+        if (fn.returnType) {
+            resolvedReturnType = this.types[fn.returnType.value] ?? this.types["unknown"];
+        } else {
+            let foundType: CheckerType | undefined = undefined;
+            const findReturnType = (expr: Expression): CheckerType | undefined => {
+                switch (expr.type) {
+                    case "ReturnExpression":
+                        return this.getTypeByValue((expr as ReturnExpression).value);
+
+                    case "IfExpression":
+                        const ixpr = expr as IfExpression;
+                        for (const stmt of ixpr.body) {
+                            const t = findReturnType(stmt);
+                            if (t) return t;
+                        }
+                        if (ixpr.alternate) {
+                            const t = findReturnType(ixpr.alternate);
+                            if (t) return t;
+                        }
+                        break;
+
+                    case "ElseExpression":
+                        const eexpr = expr as ElseExpression;
+                        for (const stmt of eexpr.body) {
+                            const t = findReturnType(stmt);
+                            if (t) return t;
+                        }
+                        break;
+                    
+
+                    case "WhileExpression": 
+                        const wxpr = expr as WhileExpression;
+                        for (const stmt of wxpr.body) {
+                            const t = findReturnType(stmt);
+                            if (t) return t;
+                        }
+                        break;
+                    
+
+                    case "SwitchExpression": 
+                        const sxpr = expr as SwitchExpression;
+                        for (const caseExpr of sxpr.cases) {
+                            const t = findReturnType(caseExpr);
+                            if (t) return t;
+                        }
+                        break;
+                    
+
+                    case "CaseExpression": 
+                        const cxpr = expr as CaseExpression;
+                        for (const stmt of cxpr.body) {
+                            const t = findReturnType(stmt);
+                            if (t) return t;
+                        }
+                        break;
+                }
+
+                return undefined;
+            };
+
+            for (const stmt of fn.body) {
+                const t = findReturnType(stmt);
+                if (t) {
+                    foundType = t;
+                    break;
+                }
+            }
+            resolvedReturnType = foundType ?? this.types["unknown"];
+        }
+
         return {
             ...fn,
+            resolvedReturnType,
             body: fn.body.map(xpr => {
                 if (xpr.type in this.table) {
                     const txpr = this.table[xpr.type]!(xpr)
@@ -48,7 +172,7 @@ export class TypeInferrer {
                 }
                 return xpr
             })
-        }
+        };
     }
 
     private inferVariableDeclaration(v: VariableDeclaration): VariableDeclaration {

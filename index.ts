@@ -17,8 +17,8 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-pub fn main() {
-    return 3
+pub fn add(a: i16, b: i16) -> i16 {
+    return a + b
 }
 `.trim()
 

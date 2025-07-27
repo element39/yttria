@@ -518,9 +518,6 @@ export class Parser {
     }
 
     private parseImportExpression(): ImportExpression {
-        // for "use std/io as stdio" tokens would be like
-        // Identifier("std") Operator("/") Identifier("io") Keyword("as") Identifier("stdio")
-        // and we gotta turn that into name = "std/io" and alias = "stdio"
         let path = (() => {
             const parts: string[] = []
             while (this.peek().type === "Identifier" || this.peek().literal === "/") {
