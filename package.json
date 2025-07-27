@@ -1,11 +1,15 @@
 {
-  "dependencies": {
-    "llvm-bindings": "^0.4.2"
-  },
   "devDependencies": {
-    "@types/bun": "^1.2.18"
+    "@types/bun": "^1.2.19"
+  },
+  "dependencies": {
+    "bun-llvm": "^0.0.1",
+    "cmake-js": "^7.3.1"
   },
   "trustedDependencies": [
-    "llvm-bindings"
-  ]
+    "bun-llvm"
+  ],
+  "overrides": {
+    "cmake-js": "7.3.1"
+  }
 }
