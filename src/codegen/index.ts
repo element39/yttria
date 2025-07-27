@@ -1,5 +1,5 @@
 import { FunctionType, Linkage, Type, Value } from "bun-llvm";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -8,10 +8,21 @@ export class Codegen {
     private scopes: Array<Record<string, { value: Value, isPointer: boolean }>> = [];
     
     private table: { [key in ExpressionType]?: (e: any) => Value | null } = {
-        FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
+        FunctionCall: this.genFunctionCall.bind(this),
         VariableDeclaration: this.genVariableDeclaration.bind(this)
     };
+
+    private registerFunctionSignature(expr: FunctionDeclaration): void {
+        const fnName = expr.name.value;
+        const retTy = this.getType(expr.resolvedReturnType?.name!);
+        const paramTypes = expr.params.map(param => this.getType(param.paramType.value));
+        const fnType = new FunctionType(paramTypes, retTy, false);
+
+        if (!this.helper.mod.getFunction(fnName)) {
+            this.helper.mod.createFunction(fnName, fnType, { linkage: Linkage.External });
+        }
+    }
 
     types: { [key: string]: Type }
 
@@ -42,20 +53,15 @@ export class Codegen {
         let retTy = this.getType(expr.resolvedReturnType?.name!);
         this.currentReturnType = retTy;
 
-        const paramTy = expr.params.map(p => this.getType(p.paramType.value));
+        const fn = this.helper.mod.getFunction(expr.name.value);
+        if (!fn) throw new Error(`Function ${expr.name.value} not found in module during codegen`);
+
+        let entryBlock = (fn as any).blocks?.[0] || fn.addBlock("entry");
+        this.helper.builder.insertInto(entryBlock);
 
         const scope: Record<string, { value: Value, isPointer: boolean }> = {};
         this.scopes.push(scope);
 
-        const fn = this.helper.fn(
-            expr.name.value,
-            new FunctionType(paramTy, retTy, false),
-            {
-                linkage: (expr.modifiers.includes("pub") || expr.modifiers.includes("extern")) ? Linkage.External : Linkage.Internal,
-                extern: expr.modifiers.includes("extern")
-            }
-        );
-        
         expr.params.forEach((param, i) => {
             const paramName = param.name.value;
             scope[paramName] = { value: fn.getArg(i), isPointer: false };
@@ -82,7 +88,7 @@ export class Codegen {
     }
 
     private genReturnExpression(expr: ReturnExpression): Value | null {
-        const value = this.genExpression(expr.value, this.currentReturnType);
+        const value = this.genLiterals(expr.value, this.currentReturnType);
         if (!value) throw new Error("Failed to generate return value");
 
         this.helper.builder.ret(value);
@@ -93,7 +99,7 @@ export class Codegen {
         const varName = expr.name.value;
         const varType = this.getType(expr.typeAnnotation?.value || expr.resolvedType?.name || "int");
 
-        const value = this.genExpression(expr.value, varType);
+        const value = this.genLiterals(expr.value, varType);
         if (!value) throw new Error(`Failed to generate value for variable ${expr.name.value}`);
 
         const alloca = this.helper.builder.alloca(varType, expr.name.value);
@@ -103,10 +109,18 @@ export class Codegen {
         return null;
     }
 
-    private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
+    private genFunctionCall(expr: FunctionCall): Value | null {
+        const fnName = expr.callee.value;
+        const fn = this.helper.mod.getFunction(fnName);
+        if (!fn) throw new Error(`function ${fnName} not found`);
+
+        const args = expr.args.map((arg: Expression) => this.genLiterals(arg)).filter((v): v is Value => v !== null);
+        return this.helper.builder.call(fn, args);
+    }
+
+    private genLiterals(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
             NumberLiteral: (expr, expectedType) => {
-                // Use float if expected, otherwise int32
                 const t = expectedType ?? Type.int32(this.helper.ctx);
                 if (t.isFloat()) {
                     return Value.constFloat(t, expr.value);
@@ -146,8 +160,8 @@ export class Codegen {
                         : Type.int32(this.helper.ctx);
                 }
 
-                const left = this.genExpression(expr.left, resultType);
-                const right = this.genExpression(expr.right, resultType);
+                const left = this.genLiterals(expr.left, resultType);
+                const right = this.genLiterals(expr.right, resultType);
                 if (!left || !right) throw new Error(`failed to generate binary expression: ${expr.operator}`);
 
                 switch (expr.operator) {
@@ -174,14 +188,29 @@ export class Codegen {
         };
 
         const visitor = tbl[expr.type];
-        if (!visitor) throw new Error(`genExpression: Unhandled expression type: ${expr.type}`);
+        if (!visitor) {
+            if (expr.type in this.table) {
+                const gen = this.table[expr.type];
+                return gen ? gen(expr) : null;
+            }
 
-        return visitor(expr, expectedType);
+            throw new Error(`genExpression: Unhandled expression type: ${expr.type}`);
+        }
+        const res = visitor(expr, expectedType);
+        return res;
     }
 
     generate() {
         for (const expr of this.ast.body) {
-            if (expr.type in this.table) {
+            if (expr.type === "FunctionDeclaration") {
+                this.registerFunctionSignature(expr as FunctionDeclaration);
+            }
+        }
+
+        for (const expr of this.ast.body) {
+            if (expr.type === "FunctionDeclaration") {
+                this.genFunctionDeclaration(expr as FunctionDeclaration);
+            } else if (expr.type in this.table) {
                 const gen = this.table[expr.type];
                 gen && gen(expr);
             }

@@ -17,14 +17,13 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-// use std/io
 
-pub fn a() {
-    return 2 / 5.4
+fn fib(n: int) -> int {
+    return n + 1
 }
 
-pub fn main() {
-    return 2
+pub fn main() -> int {
+    return fib(1)
 }
 `.trim()
 
