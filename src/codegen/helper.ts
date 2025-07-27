@@ -1,10 +1,14 @@
-import VM from "bun-llvm";
+import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module } from "bun-llvm";
 
 export class LLVMHelper {
-    private ctx: InstanceType<typeof VM.Context>;
-    private mod: InstanceType<typeof VM.Module>;
-    private builder: InstanceType<typeof VM.IRBuilder>;
-    private name: string;
+    public name: string;
+    
+    public ctx: Context;
+    public mod: Module;
+    public builder: IRBuilder;
+
+    currentFunction: Func | null = null;
+    
     constructor(name: string) {
         this.name = name
         
@@ -13,7 +17,17 @@ export class LLVMHelper {
         this.builder = new VM.IRBuilder(this.ctx);
     }
 
-    generate() {
+    fn(name: string, fnType: FunctionType, opts?: {
+        linkage?: Linkage;
+    }): Func {
+        const func = this.mod.createFunction(name, fnType, opts ?? { linkage: Linkage.External });
+        this.builder.insertInto(func.addBlock("entry"));
+        this.currentFunction = func;
+        return func;
+    }
+
+    toString() {
+        this.mod.verify();
         return this.mod.toString();
     }
 }

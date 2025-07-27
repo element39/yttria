@@ -1,16 +1,24 @@
+import { rmSync } from "fs"
 import { Codegen } from "./src/codegen"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
 import { Parser } from "./src/parser"
 import { TypeChecker } from "./src/typing/checker"
 import { TypeInferrer } from "./src/typing/inference"
+rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
-const program = `
-use std/io
+// const program = `
+// use std/io
 
+// pub fn main() {
+//     io.println("hi")
+// }
+// `.trim()
+
+const program = `
 pub fn main() {
-    io.println("hi")
+    return 3
 }
 `.trim()
 
