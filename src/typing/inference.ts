@@ -155,15 +155,44 @@ export class TypeInferrer {
                 }
                 return this.types["unknown"];
             }
-            case "BinaryExpression": {
+            case "BinaryExpression":
                 const be = v as BinaryExpression;
                 const leftType = this.getTypeByValue(be.left);
                 const rightType = this.getTypeByValue(be.right);
+                const op = be.operator;
+
+                if (["+", "-", "*", "/", "%"].includes(op)) {
+                    if (
+                        (leftType.name === "int" || leftType.name === "float") &&
+                        (rightType.name === "int" || rightType.name === "float")
+                    ) {
+                        if (leftType.name === "float" || rightType.name === "float") {
+                            return this.types["float"];
+                        }
+                        return this.types["int"];
+                    }
+                    return this.types["unknown"];
+                }
+
+                if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
+                    return this.types["bool"];
+                }
+
+                if (["&&", "||"].includes(op)) {
+                    if (leftType.name === "bool" && rightType.name === "bool") {
+                        return this.types["bool"];
+                    }
+                    return this.types["unknown"];
+                }
+
+                if (op === "+" && (leftType.name === "string" || rightType.name === "string")) {
+                    return this.types["string"];
+                }
+
                 if (leftType === rightType && leftType !== this.types["unknown"]) {
                     return leftType;
                 }
                 return this.types["unknown"];
-            }
         }
         return this.types["unknown"];
     }

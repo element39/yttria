@@ -1,5 +1,5 @@
 import { FunctionType, Linkage, Type, Value } from "bun-llvm";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -84,6 +84,7 @@ export class Codegen {
     private genReturnExpression(expr: ReturnExpression): Value | null {
         const value = this.genExpression(expr.value, this.currentReturnType);
         if (!value) throw new Error("Failed to generate return value");
+
         this.helper.builder.ret(value);
         return null;
     }
@@ -104,12 +105,18 @@ export class Codegen {
 
     private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
-            
             NumberLiteral: (expr, expectedType) => {
+                // Use float if expected, otherwise int32
                 const t = expectedType ?? Type.int32(this.helper.ctx);
+                if (t.isFloat()) {
+                    return Value.constFloat(t, expr.value);
+                }
+                if (!Number.isInteger(expr.value)) {
+                    throw new Error(`can't assign float literal ${expr.value} to integer type`);
+                }
                 return Value.constInt(t, expr.value);
             },
-            
+
             BooleanLiteral: (expr, expectedType) => {
                 return Value.constInt(Type.int1(this.helper.ctx), expr.value ? 1 : 0);
             },
@@ -128,33 +135,42 @@ export class Codegen {
             },
 
             BinaryExpression: (expr: BinaryExpression, expectedType) => {
-                const left = this.genExpression(expr.left, expectedType);
-                const right = this.genExpression(expr.right, expectedType);
+                let resultType: Type;
+                if (expectedType?.isFloat && expectedType.isFloat()) {
+                    resultType = expectedType;
+                } else {
+                    const leftIsFloatLit = expr.left.type === "NumberLiteral" && !Number.isInteger((expr.left as NumberLiteral).value);
+                    const rightIsFloatLit = expr.right.type === "NumberLiteral" && !Number.isInteger((expr.right as NumberLiteral).value);
+                    resultType = (leftIsFloatLit || rightIsFloatLit)
+                        ? Type.float(this.helper.ctx)
+                        : Type.int32(this.helper.ctx);
+                }
+
+                const left = this.genExpression(expr.left, resultType);
+                const right = this.genExpression(expr.right, resultType);
                 if (!left || !right) throw new Error(`failed to generate binary expression: ${expr.operator}`);
 
                 switch (expr.operator) {
                     case "+":
-                        return this.helper.builder.add(left, right);
+                        return resultType.isFloat()
+                            ? this.helper.builder.fadd(left, right)
+                            : this.helper.builder.add(left, right);
                     case "-":
-                        return this.helper.builder.sub(left, right);
+                        return resultType.isFloat()
+                            ? this.helper.builder.fsub(left, right)
+                            : this.helper.builder.sub(left, right);
                     case "*":
-                        return this.helper.builder.mul(left, right);
-                    case "/": {
-                        if (!expectedType) return this.helper.builder.sdiv(left, right);
-
-                        const typeName = Object.entries(this.types).find(([_, v]) => v === expectedType)?.[0];
-                        if (typeName === "float") {
-                            return this.helper.builder.fdiv(left, right);
-                        } else if (["int", "i8", "i16", "i32", "i64"].includes(typeName || "")) {
-                            return this.helper.builder.sdiv(left, right);
-                        } else {
-                            return this.helper.builder.udiv(left, right);
-                        }
-                    }
+                        return resultType.isFloat()
+                            ? this.helper.builder.fmul(left, right)
+                            : this.helper.builder.mul(left, right);
+                    case "/":
+                        return resultType.isFloat()
+                            ? this.helper.builder.fdiv(left, right)
+                            : this.helper.builder.sdiv(left, right);
                     default:
                         throw new Error(`Unknown binary operator: ${expr.operator}`);
                 }
-            }
+            },
         };
 
         const visitor = tbl[expr.type];
@@ -176,8 +192,13 @@ export class Codegen {
 
     private getType(name: string): Type {
         const type = this.types[name];
-        if (!type) throw new Error(`Unknown type: ${name}`);
-
+        if (!type) {
+            const available = Object.keys(this.types).join(", ");
+            throw new Error(
+                `unknown type: '${name}'.\navailable types: [${available}]\n` +
+                `this probably meant a type annotation or inference failed.`
+            );
+        }
         return type;
     }
 }
