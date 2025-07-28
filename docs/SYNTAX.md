@@ -53,6 +53,19 @@ null // null value (yttria is an expressive language, so null is still a value)
 ...
 ```
 
+### type aliases
+Type aliases can be used to simplify complex types or to create more meaningful names for existing types.
+
+```rs
+type UserID = int
+type User = {
+    id: UserID,
+    name: string,
+    email:
+    string
+}
+```
+
 ### variables
 yttria supports both mutable and immutable variables. Variables can be declared using `let` for mutable variables or `const` for immutable variables.
 
@@ -62,6 +75,38 @@ const x := 20.5 // immutable variable with type inference
 
 let y: int = 30 // mutable variable with explicit type
 const z: float = 40.5 // immutable variable with explicit type
+```
+
+
+### template strings
+yttria supports template strings for easy string interpolation, similar to JavaScript's template literals. Template strings can span multiple lines and can include expressions within `{}`.
+
+```rs
+let name := "World"
+let greeting := `Hello, {name}!` // Hello, World!
+```
+
+### destructuring
+yttria supports destructuring for arrays, objects, and tuples, just like Javascript.
+
+```rs
+let [x, y, z] := [1, 2, 3] // 1, 2, 3
+let {name, age} := {name: "Alice", age: 30} // "Alice", 30
+let (a, b) := (10, 20) // 10, 20
+```
+
+#### destructuring with defaults
+yttria allows destructuring with default values, making it easy to handle missing properties or values.
+
+```rs
+let {name, age = 18} := {name: "Bob"} // "Bob 18"
+```
+#### destructuring with rest
+yttria supports destructuring with rest parameters, allowing you to capture remaining values in an array or object.
+
+```rs
+let [first, ...rest] := [1, 2, 3, 4, 5] // "1 [2, 3, 4, 5]"
+let {name, ...details} := {name: "Charlie", age: 25, city: "New York"} // "Charlie {age: 25, city: 'New York'}"
 ```
 
 ### functions
@@ -147,6 +192,28 @@ try {
 }
 ```
 
+### pattern matching
+yttria has powerful pattern matching capabilities, allowing for more expressive and concise code. Pattern matching can be used with enums, structs, and tuples, making it easy to destructure and work with complex data types.
+
+```rs
+let point := new Point(1.0, 2.0)
+
+switch (point) {
+    case -> Point(x, y) as p {
+        io.println(`Point at ({p.x}, {p.y})`)
+    }
+
+    case -> Point(x, y) as p if (p.x > 0 && p.y > 0) {
+        io.println("Point is in the first quadrant")
+    }
+
+    default -> {
+        io.println("Unknown point")
+    }
+}
+```
+
+
 ### modules
 yttria supports modules for organizing code. Modules can be imported using the `use` keyword, and can be aliased for convenience. Similar to Go, odules are folder based, so foo/baz.yt and foo/bar.yt are both part of the module `foo`, unlike JS's `import` syntax which is file-based.
 
@@ -181,6 +248,17 @@ struct Point {
 // main.yt
 use point as poi;
 const p := new poi.Point(1.0, 2.0)
+```
+
+### js-style objects
+yttria supports objects (also known as maps, dictionaries or hash tables etc), which are collections of key-value pairs. Maps can be created using curly braces (`{}`) and can have keys of any type, but values must be of the same type. They are extremely similar to JS objects.
+
+```rs
+let user := {
+    id: 1,
+    name: "Alice",
+    age: 30
+}
 ```
 
 ### enums
@@ -241,24 +319,8 @@ fn main() {
 }
 ```
 
-### pattern matching
-yttria has powerful pattern matching capabilities, allowing for more expressive and concise code. Pattern matching can be used with enums, structs, and tuples, making it easy to destructure and work with complex data types.
-
-```rs
-let point := new Point(1.0, 2.0)
-
-switch (point) {
-    case Point(x, y) as p:
-        io.println(`Point at ({p.x}, {p.y})`)
-    case Point(x, y) as p if (p.x > 0 && p.y > 0):
-        io.println("Point is in the first quadrant")
-    default:
-        io.println("Unknown point")
-}
-```
-
-### asynchronous programming
-yttria has first-class support, allowing for easy parallel execution of code. Concurrency is achieved using the `async` and `await` keywords, similar to JavaScript. yttria also supports channels for communication between concurrent tasks. yttria's `async` keyword can also be called as a block in sync functions, similar to Go's goroutines or Javascript's IIFEs.
+### asynchronous/concurrent programming
+yttria has first-class support, allowing for easy parallel execution of code. Asynchronous programming is achieved using the `async` and `await` keywords, similar to JavaScript. yttria also supports channels for communication between concurrent tasks. yttria's `async` keyword can also be called as a block in sync functions, similar to Go's goroutines or Javascript's IIFEs.
 
 ```rs
 use std/http;
@@ -340,50 +402,6 @@ fn add(a: int, b: int) -> int {
 }
 ```
 
-### template strings
-yttria supports template strings for easy string interpolation, similar to JavaScript's template literals. Template strings can span multiple lines and can include expressions within `{}`.
-
-```rs
-let name := "World"
-let greeting := `Hello, {name}!` // Hello, World!
-```
-
-### type aliases
-Type aliases can be used to simplify complex types or to create more meaningful names for existing types.
-
-```rs
-type UserID = int
-type User = {
-    id: UserID,
-    name: string,
-    email:
-    string
-}
-```
-
-### destructuring
-yttria supports destructuring for arrays, objects, and tuples, just like Javascript.
-
-```rs
-let [x, y, z] := [1, 2, 3] // 1, 2, 3
-let {name, age} := {name: "Alice", age: 30} // "Alice", 30
-let (a, b) := (10, 20) // 10, 20
-```
-
-#### destructuring with defaults
-yttria allows destructuring with default values, making it easy to handle missing properties or values.
-
-```rs
-let {name, age = 18} := {name: "Bob"} // "Bob 18"
-```
-#### destructuring with rest
-yttria supports destructuring with rest parameters, allowing you to capture remaining values in an array or object.
-
-```rs
-let [first, ...rest] := [1, 2, 3, 4, 5] // "1 [2, 3, 4, 5]"
-let {name, ...details} := {name: "Charlie", age: 25, city: "New York"} // "Charlie {age: 25, city: 'New York'}"
-```
-
 ### tuples
 yttria supports tuples, which are fixed-size collections of elements that can be of different types. Tuples are useful for grouping related values together. Unlike arrays, tuples have a fixed size and can contain elements of different types, however unlike Python, tuples in yttria can have any size. They are also immutable, the `let` keyword has no effect on its mutability.
 ```rs
@@ -401,17 +419,6 @@ const names: string[] = ["Alice", "Bob", "Charlie"]
 let mixed: string[] | int[] = [1, "Hello", 3.14]
 ```
 
-### objects
-yttria supports objects (also known as maps, dictionaries or hash tables), which are collections of key-value pairs. Maps can be created using curly braces (`{}`) and can have keys of any type, but values must be of the same type. They are extremely similar to JS objects.
-
-```rs
-let user := {
-    id: 1,
-    name: "Alice",
-    age: 30
-}
-```
-
 ### iterators
 yttria supports iterators, which allow you to iterate over collections like arrays, maps, and sets. Iterators can be created using the `for` keyword and can be used with any iterable collection.
 
@@ -422,7 +429,7 @@ for (let number in numbers) {
 }
 ```
 
-### FFI
+### ffi
 yttria supports Foreign Function Interface (FFI), which allows you to leverage existing libraries written in other languages like C or Rust. This is useful for performance-critical code or when you want to use existing libraries without rewriting them in yttria. Here is an example with raylib
 
 ```rs
@@ -461,7 +468,7 @@ fn main() {
 }
 ```
 
-### External
+### link-time libraries
 yttria supports external functions, which are functions that are provided at link-time, unlike FFI, which natively links to libraries at compile time. External functions can be used to call functions from other yttria modules or from external libraries.
 
 ```rs
