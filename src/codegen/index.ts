@@ -1,5 +1,5 @@
-import { FunctionType, Linkage, Type, Value } from "bun-llvm";
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { BasicBlock, FunctionType, Linkage, Type, Value } from "bun-llvm";
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -10,7 +10,9 @@ export class Codegen {
     private table: { [key in ExpressionType]?: (e: any) => Value | null } = {
         ReturnExpression: this.genReturnExpression.bind(this),
         FunctionCall: this.genFunctionCall.bind(this),
-        VariableDeclaration: this.genVariableDeclaration.bind(this)
+        VariableDeclaration: this.genVariableDeclaration.bind(this),
+
+        IfExpression: this.genIfExpression.bind(this),
     };
 
     private registerFunctionSignature(expr: FunctionDeclaration): void {
@@ -88,7 +90,7 @@ export class Codegen {
     }
 
     private genReturnExpression(expr: ReturnExpression): Value | null {
-        const value = this.genLiterals(expr.value, this.currentReturnType);
+        const value = this.genExpression(expr.value, this.currentReturnType);
         if (!value) throw new Error("Failed to generate return value");
 
         this.helper.builder.ret(value);
@@ -99,7 +101,7 @@ export class Codegen {
         const varName = expr.name.value;
         const varType = this.getType(expr.typeAnnotation?.value || expr.resolvedType?.name || "int");
 
-        const value = this.genLiterals(expr.value, varType);
+        const value = this.genExpression(expr.value, varType);
         if (!value) throw new Error(`Failed to generate value for variable ${expr.name.value}`);
 
         const alloca = this.helper.builder.alloca(varType, expr.name.value);
@@ -114,11 +116,80 @@ export class Codegen {
         const fn = this.helper.mod.getFunction(fnName);
         if (!fn) throw new Error(`function ${fnName} not found`);
 
-        const args = expr.args.map((arg: Expression) => this.genLiterals(arg)).filter((v): v is Value => v !== null);
+        const args = expr.args.map((arg: Expression) => this.genExpression(arg)).filter((v): v is Value => v !== null);
         return this.helper.builder.call(fn, args);
     }
 
-    private genLiterals(expr: Expression, expectedType?: Type | null): Value | null {
+    private genIfExpression(expr: IfExpression): Value | null {
+        const block = this.helper.builder.getInsertBlock();
+        if (!block || !block.parent) throw new Error("no current block for if expression");
+
+        const condBB = block.parent.addBlock("if_cond");
+        const trueBB = block.parent.addBlock("if_true");
+        let falseBB: BasicBlock;
+        let endBB: BasicBlock | undefined;
+
+        if (expr.alternate) {
+            falseBB = block.parent.addBlock("if_false");
+            endBB = block.parent.addBlock("if_end");
+        } else {
+            endBB = block.parent.addBlock("if_end");
+            falseBB = endBB;
+        }
+
+        this.helper.builder.insertInto(block);
+        this.helper.builder.br(condBB);
+
+        this.helper.builder.insertInto(condBB);
+        const condition = this.genExpression(expr.condition);
+        if (!condition) throw new Error("condition expression must return a value");
+        this.helper.builder.condBr(condition, trueBB, falseBB);
+
+        this.helper.builder.insertInto(trueBB);
+        let trueReturned = false;
+        for (const e of expr.body) {
+            if (!(e.type in this.table)) continue;
+            if (e.type === "ReturnExpression") trueReturned = true;
+            const fnGen = this.table[e.type];
+            fnGen && fnGen(e);
+        }
+
+        if (!trueReturned) {
+            this.helper.builder.br(endBB);
+        }
+
+        let falseReturned = false;
+        
+        if (expr.alternate) {
+            this.helper.builder.insertInto(falseBB);
+
+            if (expr.alternate.type === "IfExpression") {
+                this.genIfExpression(expr.alternate);
+            } else if (expr.alternate.type === "ElseExpression") {
+                for (const e of expr.alternate.body) {
+                    if (!(e.type in this.table)) continue;
+                        
+                    if (e.type === "ReturnExpression") falseReturned = true;
+                    const fnGen = this.table[e.type];
+                    fnGen && fnGen(e);
+                }
+            }
+
+            if (!falseReturned) {
+                this.helper.builder.br(endBB);
+            }
+        }
+
+        if (endBB && (!trueReturned || !falseReturned)) {
+            this.helper.builder.insertInto(endBB);
+        } else if (endBB && trueReturned && falseReturned) {
+            endBB.erase();
+        }
+
+        return null;
+    }
+
+    private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
             NumberLiteral: (expr, expectedType) => {
                 const t = expectedType ?? Type.int32(this.helper.ctx);
@@ -160,8 +231,8 @@ export class Codegen {
                         : Type.int32(this.helper.ctx);
                 }
 
-                const left = this.genLiterals(expr.left, resultType);
-                const right = this.genLiterals(expr.right, resultType);
+                const left = this.genExpression(expr.left, resultType);
+                const right = this.genExpression(expr.right, resultType);
                 if (!left || !right) throw new Error(`failed to generate binary expression: ${expr.operator}`);
 
                 switch (expr.operator) {
@@ -181,6 +252,31 @@ export class Codegen {
                         return resultType.isFloat()
                             ? this.helper.builder.fdiv(left, right)
                             : this.helper.builder.sdiv(left, right);
+
+                    case "==":
+                        return this.helper.builder.icmpEQ(left, right);
+                    case "!=":
+                        return this.helper.builder.icmpNE(left, right);
+                    case "<":
+                        return this.helper.builder.icmpSLT(left, right);
+                    case "<=":
+                        return this.helper.builder.icmpSLE(left, right);
+                    case ">":
+                        return this.helper.builder.icmpSGT(left, right);
+                    case ">=":
+                        return this.helper.builder.icmpSGE(left, right);
+                    case "&&":
+                        const andResult = this.helper.builder.alloca(Type.int1(this.helper.ctx), "and_result");
+                        this.helper.builder.store(left, andResult);
+                        const andRight = this.helper.builder.load(right);
+                        this.helper.builder.store(andRight, andResult);
+                        return this.helper.builder.load(andResult);
+                    case "||":
+                        const orResult = this.helper.builder.alloca(Type.int1(this.helper.ctx), "or_result");
+                        this.helper.builder.store(left, orResult);
+                        const orRight = this.helper.builder.load(right);
+                        this.helper.builder.store(orRight, orResult);
+                        return this.helper.builder.load(orResult);
                     default:
                         throw new Error(`Unknown binary operator: ${expr.operator}`);
                 }

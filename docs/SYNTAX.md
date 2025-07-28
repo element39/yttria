@@ -162,7 +162,7 @@ use std/http as _; // import without using, bypassing the "unused import" warnin
 ### structs
 yttria supports structs for defining custom data types. Structs can have methods associated with them, most similar to Go, but more readable & compact. Structs can also have constructors, which are special methods that are called when a new instance of the struct is created, unlike Go.
 
-```ts
+```rs
 // point.yt
 struct Point {
     let x: float
@@ -186,7 +186,7 @@ const p := new poi.Point(1.0, 2.0)
 ### enums
 yttria supports enums for defining a set of named values. Enums can have associated data, and can be used in pattern matching.
 
-```ts
+```rs
 enum Color {
     Red,
     Green,
@@ -196,14 +196,21 @@ enum Color {
 
 fn printColor(color: Color) {
     switch (color) {
-        case Color.Red:
+        case -> Color.Red {
             io.println("Red")
-        case Color.Green:
+        }
+
+        case -> Color.Green {
             io.println("Green")
-        case Color.Blue:
+        }
+        
+        case -> Color.Blue {
             io.println("Blue")
-        case Color.Custom(r, g, b):
+        }
+
+        case -> Color.Custom(r, g, b) {
             io.println(`Custom color: {r}, {g}, {b}`)
+        }
     }
 }
 ```

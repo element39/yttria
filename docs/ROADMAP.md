@@ -12,21 +12,21 @@
 <!-- https://ascii.bar -->
 
 ### language core
-current version: `v0.0.2-alpha.3`
+current version: `v0.0.2`
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
-  lexer             95%      ████████████▒      complete soon
-  parser            90%      ███████████▓░      complete soon
-  typechecker       80%      ██████████▒░░      complete soon
-  codegen           40%      █████▒░░░░░░░      2-3 weeks
+  lexer             100%     █████████████      practically complete
+  parser            100%     █████████████      practically complete
+  typechecker       80%      ██████████▓░░      complete soon
+  codegen           40%      ███████░░░░░░      2-3 weeks
 ```
 
 ### std
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
-  std/io            0%       ░░░░░░░░░░░░░      no eta
+  std/io            0%       █░░░░░░░░░░░░      2 weeks
   std/fs            0%       ░░░░░░░░░░░░░      no eta
   std/net           0%       ░░░░░░░░░░░░░      no eta
   std/math          0%       ░░░░░░░░░░░░░      no eta
@@ -42,6 +42,6 @@ current version: `v0.0.2-alpha.3`
 ```
 
 ## status report
-> last updated: 22/7/2025 (dd/mm/yyyy)
+> last updated: 28/7/2025 (dd/mm/yyyy)
 
-yttria is still in early development; lexer and parser are nearly finished, typechecker is close to complete, and codegen supports core features but advanced features are still in progress.
+yttria is still in early development; lexer and parser are finished!!! typechecker (and now inferrer) have been overhauled, codegen still supports core features buandt advanced features are still in progress. basic stdlib available but unusable for now
