@@ -12,21 +12,21 @@
 <!-- https://ascii.bar -->
 
 ### language core
-current version: `v0.0.2`
+current version: `v0.0.3.alpha-1`
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
   lexer             100%     █████████████      practically complete
   parser            100%     █████████████      practically complete
-  typechecker       80%      ██████████▓░░      complete soon
-  codegen           40%      ███████░░░░░░      2-3 weeks
+  typechecker       85%      ██████████▓░░      complete soon
+  codegen           45%      ███████▓░░░░░      2-3 weeks
 ```
 
 ### std
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
-  std/io            0%       █░░░░░░░░░░░░      2 weeks
+  std/io            10%      █░░░░░░░░░░░░      2 weeks
   std/fs            0%       ░░░░░░░░░░░░░      no eta
   std/net           0%       ░░░░░░░░░░░░░      no eta
   std/math          0%       ░░░░░░░░░░░░░      no eta

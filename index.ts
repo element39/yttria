@@ -17,11 +17,11 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-extern fn printf(format: string) -> int
+extern fn puts(s: string) -> int
 
 pub fn main() -> int {
-    let a: string = 1
-    let b: int = "hello world"
+    puts("hi")
+    return 1
 }
 `.trim()
 
@@ -113,4 +113,4 @@ const exe = Bun.spawnSync({
 })
 
 
-console.log("exit code:", exe.exitCode)
+console.log("\nexit code:", exe.exitCode)

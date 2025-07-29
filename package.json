@@ -3,7 +3,7 @@
     "@types/bun": "^1.2.19"
   },
   "dependencies": {
-    "bun-llvm": "^0.0.13",
+    "bun-llvm": "^0.0.15",
     "cmake-js": "^7.3.1"
   },
   "trustedDependencies": [

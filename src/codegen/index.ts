@@ -55,6 +55,11 @@ export class Codegen {
         let retTy = this.getType(expr.resolvedReturnType?.name!);
         this.currentReturnType = retTy;
 
+        if (expr.modifiers.includes("extern")) {
+            this.currentReturnType = null;
+            return null;
+        }
+
         const fn = this.helper.mod.getFunction(expr.name.value);
         if (!fn) throw new Error(`Function ${expr.name.value} not found in module during codegen`);
 
@@ -69,19 +74,17 @@ export class Codegen {
             scope[paramName] = { value: fn.getArg(i), isPointer: false };
         });
 
-        if (!expr.modifiers.includes("extern")) {
-            let hasReturn = false;
-            for (const e of expr.body) {
-                if (e.type === "ReturnExpression") hasReturn = true;
-                if (e.type in this.table) {
-                    const gen = this.table[e.type];
-                    gen && gen(e);
-                }
+        let hasReturn = false;
+        for (const e of expr.body) {
+            if (e.type === "ReturnExpression") hasReturn = true;
+            if (e.type in this.table) {
+                const gen = this.table[e.type];
+                gen && gen(e);
             }
+        }
 
-            if (!hasReturn && expr.resolvedReturnType?.name === "void") {
-                this.helper.builder.ret();
-            }
+        if (!hasReturn && expr.resolvedReturnType?.name === "void") {
+            this.helper.builder.ret();
         }
 
         this.scopes.pop();
@@ -204,6 +207,12 @@ export class Codegen {
 
             BooleanLiteral: (expr, expectedType) => {
                 return Value.constInt(Type.int1(this.helper.ctx), expr.value ? 1 : 0);
+            },
+
+            // TODO: there gotta be a better way of doing this
+            StringLiteral: (expr, expectedType) => {
+                const val = this.helper.mod.addGlobalString(expr.value);
+                return this.helper.builder.bitcast(val, Type.pointer(Type.int8(this.helper.ctx)));
             },
 
             Identifier: (expr: any) => {
