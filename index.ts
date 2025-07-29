@@ -17,16 +17,11 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-fn fib(n: int) -> int {
-    if (n <= 1) {
-        return n
-    }
-    
-    return fib(n - 1) + fib(n - 2)
-}
+extern fn printf(format: string) -> int
 
 pub fn main() -> int {
-    return fib(12)
+    let a: string = 1
+    let b: int = "hello world"
 }
 `.trim()
 
