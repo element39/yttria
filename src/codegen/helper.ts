@@ -1,4 +1,4 @@
-import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module } from "bun-llvm";
+import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module } from "../bindings";
 
 export class LLVMHelper {
     public name: string;

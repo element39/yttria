@@ -1,4 +1,4 @@
-import { BasicBlock, FunctionType, Linkage, Type, Value } from "bun-llvm";
+import { BasicBlock, FunctionType, Linkage, Type, Value } from "../bindings";
 import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
