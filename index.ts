@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, rmSync } from "fs"
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "fs"
+import path from "path"
 import { Codegen } from "./src/codegen"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
@@ -72,8 +73,10 @@ for (const [name, mod] of Object.entries(modules)) {
 
     const cg = new Codegen(name, ist, modules)
     const code = cg.generate()
-    const fileBase = name.includes('/') ? name.split('/').pop()! : name
-    await Bun.write(`out/${fileBase}.ll`, code)
+
+    const llPath = path.join("out", `${name}.ll`)
+    mkdirSync(path.dirname(llPath), { recursive: true })
+    await Bun.write(llPath, code)
 
     const genTime = performance.now()
     console.log(`   generated code in ${(genTime - checkTime).toFixed(3)}ms\n`)
@@ -88,20 +91,32 @@ if (!existsSync("./objects")) {
 }
 
 for (const [name] of Object.entries(modules)) {
+    const objPath = path.join("objects", `${name}.o`)
+    mkdirSync(path.dirname(objPath), { recursive: true })
+    const llPath = path.join("out", `${name}.ll`)
     Bun.spawnSync({
-        cmd: ["llc", `./out/${name.includes('/') ? name.split('/').pop()! : name}.ll`, "-filetype=obj", "-o", `./objects/${name.includes('/') ? name.split('/').pop()! : name}.o`],
+        cmd: ["llc", llPath, "-filetype=obj", "-o", objPath],
         stdout: "inherit",
         stderr: "inherit",
     })
 }
 
-import { readdirSync } from "fs"
-const objectFiles = readdirSync("./objects")
-    .filter(f => f.endsWith(".o"))
-    .map(f => `./objects/${f}`)
+function collectO(dir: string): string[] {
+    let results: string[] = []
+    for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name)
+        if (statSync(full).isDirectory()) {
+            results.push(...collectO(full))
+        } else if (full.endsWith('.o')) {
+            results.push(full)
+        }
+    }
+    return results
+}
+const objects = collectO("./objects");
 
 Bun.spawnSync({
-    cmd: ["gcc", ...objectFiles, "-o", "./out/executable.exe"],
+    cmd: ["gcc", ...objects, "-o", "./out/executable.exe"],
     stdout: "inherit",
     stderr: "inherit",
 })
