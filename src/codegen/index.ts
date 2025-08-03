@@ -365,10 +365,31 @@ export class Codegen {
     }
 
     generate() {
+        if (this.name === "main") {
+            for (const [modName, { ast }] of Object.entries(this.modules)) {
+                if (modName.startsWith("builtin/")) {
+                    for (const expr of ast.body) {
+                        if (expr.type === "FunctionDeclaration") {
+                            const fnDecl = expr as FunctionDeclaration;
+                            const fnName = fnDecl.name.value;
+                            const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                            const retTy = this.getType(retName);
+                            const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
+                            const fnType = new FunctionType(paramT, retTy, false);
+                            if (!this.helper.mod.getFunction(fnName)) {
+                                this.helper.fn(fnName, fnType, { linkage: Linkage.External, extern: true });
+                            }
+                            if (retName === "void") this.voidCalls.add(fnName);
+                        }
+                    }
+                }
+            }
+        }
+
         for (const expr of this.ast.body) {
             if (expr.type === "FunctionDeclaration" && (expr as FunctionDeclaration).modifiers.includes("extern")) {
                 const fnDecl = expr as FunctionDeclaration;
-                // native C imports use unprefixed names
+
                 const fnName = fnDecl.name.value;
                 const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
                 const retTy = this.getType(retName);

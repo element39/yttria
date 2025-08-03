@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "fs"
 import path from "path"
 import { Codegen } from "./src/codegen"
 import { Lexer } from "./src/lexer"
@@ -22,7 +22,19 @@ const program = `
 use std/io
 
 fn main() -> int {
-  io.println("hello")
+  let s1: string = "apple"
+  let s2: string = "banana"
+
+  let result: int = strcmp(s1, s2)
+
+  if (result == 0) {
+    io.println("strings are equal")
+  } else if (result < 0) {
+    io.println("apple comes before banana")
+  } else {
+    io.println("apple comes after banana")
+  }
+
   return 0
 }
 `.trim()
@@ -45,6 +57,19 @@ console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms,
 
 const r = new ModuleResolver(ast)
 const modules: Record<string, ResolvedModule> = { "main": { ast }, ...r.resolve() }
+
+{
+    const builtinDir = path.resolve("src/module/builtin")
+    if (existsSync(builtinDir)) {
+        for (const file of readdirSync(builtinDir).filter(f => f.endsWith(".yt"))) {
+            const content = readFileSync(path.join(builtinDir, file), "utf8")
+            const tokens2 = new Lexer(content).lex()
+            const ast2 = new Parser(tokens2).parse()
+            const name2 = path.basename(file, ".yt")
+            modules[`builtin/${name2}`] = { ast: ast2 }
+        }
+    }
+}
 
 await Bun.write("out/modules.json", JSON.stringify(modules, null, 2))
 const modTime = performance.now()
@@ -121,7 +146,7 @@ Bun.spawnSync({
     stderr: "inherit",
 })
 
-console.log("executable output:\n")
+console.log(`executable output:\n\n${"=".repeat(50)}`)
 
 const exe = Bun.spawnSync({
     cmd: ["./out/executable.exe"],
@@ -130,4 +155,4 @@ const exe = Bun.spawnSync({
 })
 
 
-console.log("\nexit code:", exe.exitCode)
+console.log(`${"=".repeat(50)}\n\nexit code:`, exe.exitCode)
