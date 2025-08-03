@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, rmSync } from "fs"
 import { Codegen } from "./src/codegen"
 import { Lexer } from "./src/lexer"
 import { ModuleResolver } from "./src/module/resolver"
+import { ResolvedModule } from "./src/module/types"
 import { Parser } from "./src/parser"
 import { TypeChecker } from "./src/typing/checker"
 import { TypeInferrer } from "./src/typing/inference"
@@ -17,11 +18,11 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-extern fn puts(s: string) -> int
+use std/io
 
-pub fn main() -> int {
-    puts("hi")
-    return 1
+fn main() -> int {
+  io.println("hello")
+  return 0
 }
 `.trim()
 
@@ -42,7 +43,7 @@ const astTime = performance.now()
 console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
 
 const r = new ModuleResolver(ast)
-const modules = { "main": { ast }, ...r.resolve() }
+const modules: Record<string, ResolvedModule> = { "main": { ast }, ...r.resolve() }
 
 await Bun.write("out/modules.json", JSON.stringify(modules, null, 2))
 const modTime = performance.now()
@@ -55,6 +56,7 @@ for (const [name, mod] of Object.entries(modules)) {
     
     const ti = new TypeInferrer(mod.ast)
     const ist = ti.infer()
+    modules[name].ast = ist
 
     const infTime = performance.now()
     console.log(`   inferred types in ${(infTime - start).toFixed(3)}ms`)
@@ -68,10 +70,10 @@ for (const [name, mod] of Object.entries(modules)) {
     const checkTime = performance.now()
     console.log(`   checked types in ${(checkTime - infTime).toFixed(3)}ms`)
 
-    const cg = new Codegen(name, ist)
+    const cg = new Codegen(name, ist, modules)
     const code = cg.generate()
-
-    await Bun.write(`out/${name}.ll`, code)
+    const fileBase = name.includes('/') ? name.split('/').pop()! : name
+    await Bun.write(`out/${fileBase}.ll`, code)
 
     const genTime = performance.now()
     console.log(`   generated code in ${(genTime - checkTime).toFixed(3)}ms\n`)
@@ -87,7 +89,7 @@ if (!existsSync("./objects")) {
 
 for (const [name] of Object.entries(modules)) {
     Bun.spawnSync({
-        cmd: ["llc", `./out/${name}.ll`, "-filetype=obj", "-o", `./objects/${name}.o`],
+        cmd: ["llc", `./out/${name.includes('/') ? name.split('/').pop()! : name}.ll`, "-filetype=obj", "-o", `./objects/${name.includes('/') ? name.split('/').pop()! : name}.o`],
         stdout: "inherit",
         stderr: "inherit",
     })

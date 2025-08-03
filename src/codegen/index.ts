@@ -1,10 +1,16 @@
 import { BasicBlock, FunctionType, Linkage, Type, Value } from "../bindings";
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, IfExpression, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { ResolvedModule } from "../module/types";
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
+    private name: string;
     private ast: ProgramExpression;
     private helper: LLVMHelper;
+
+    private alias: string;
+    private modules: { [key: string]: ResolvedModule };
+    private voidCalls: Set<string> = new Set();
     private scopes: Array<Record<string, { value: Value, isPointer: boolean }>> = [];
     
     private table: { [key in ExpressionType]?: (e: any) => Value | null } = {
@@ -16,8 +22,9 @@ export class Codegen {
     };
 
     private registerFunctionSignature(expr: FunctionDeclaration): void {
-        const fnName = expr.name.value;
-        const retTy = this.getType(expr.resolvedReturnType?.name!);
+        const fnName = this.alias ? `${this.alias}.${expr.name.value}` : expr.name.value;
+        const retName = expr.resolvedReturnType?.name ?? expr.returnType?.value ?? "void";
+        const retTy = this.getType(retName);
         const paramTypes = expr.params.map(param => this.getType(param.paramType.value));
         const fnType = new FunctionType(paramTypes, retTy, false);
 
@@ -28,9 +35,16 @@ export class Codegen {
 
     types: { [key: string]: Type }
 
-    constructor(name: string, ast: ProgramExpression) {
+    constructor(
+        name: string,
+        ast: ProgramExpression,
+        modules: { [key: string]: ResolvedModule }
+    ) {
+        this.name = name;
+        this.alias = name === "main" ? "" : name.split("/").pop()!;
         this.ast = ast;
         this.helper = new LLVMHelper(name);
+        this.modules = modules;
 
         this.types = {
             "int": Type.int32(this.helper.ctx),
@@ -52,19 +66,19 @@ export class Codegen {
     private currentReturnType: Type | null = null;
 
     private genFunctionDeclaration(expr: FunctionDeclaration): Value | null {
-        let retTy = this.getType(expr.resolvedReturnType?.name!);
-        this.currentReturnType = retTy;
+        const retName2 = expr.resolvedReturnType?.name ?? expr.returnType?.value ?? "void";
+        const retTy2 = this.getType(retName2);
+        this.currentReturnType = retTy2;
 
         if (expr.modifiers.includes("extern")) {
             this.currentReturnType = null;
             return null;
         }
 
-        const fn = this.helper.mod.getFunction(expr.name.value);
-        if (!fn) throw new Error(`Function ${expr.name.value} not found in module during codegen`);
-
-        let entryBlock = (fn as any).blocks?.[0] || fn.addBlock("entry");
-        this.helper.builder.insertInto(entryBlock);
+        const fnName = this.alias ? `${this.alias}.${expr.name.value}` : expr.name.value;
+        const paramTypes = expr.params.map(param => this.getType(param.paramType.value));
+        const fnType = new FunctionType(paramTypes, retTy2, false);
+        const fn = this.helper.fn(fnName, fnType);
 
         const scope: Record<string, { value: Value, isPointer: boolean }> = {};
         this.scopes.push(scope);
@@ -83,7 +97,7 @@ export class Codegen {
             }
         }
 
-        if (!hasReturn && expr.resolvedReturnType?.name === "void") {
+        if (!hasReturn && (expr.resolvedReturnType?.name ?? expr.returnType?.value) === "void") {
             this.helper.builder.ret();
         }
 
@@ -115,11 +129,56 @@ export class Codegen {
     }
 
     private genFunctionCall(expr: FunctionCall): Value | null {
-        const fnName = expr.callee.value;
-        const fn = this.helper.mod.getFunction(fnName);
+        let fnName: string;
+        const calleeExpr = expr.callee as Expression;
+        if (calleeExpr.type === "MemberAccess") {
+            // e.g. io.println
+            const member = calleeExpr as MemberAccess;
+            const obj = member.object as Identifier;
+            const prop = member.property as Identifier;
+            fnName = `${obj.value}.${prop.value}`;
+        } else {
+            const id = expr.callee as Identifier;
+            fnName = id.value;
+        }
+
+        let fn = this.helper.mod.getFunction(fnName);
+        if (!fn && this.alias) {
+            const qualified = `${this.alias}.${fnName}`;
+            fn = this.helper.mod.getFunction(qualified);
+            if (fn) fnName = qualified;
+        }
+
+        if (!fn && calleeExpr.type === "MemberAccess") {
+            const member = calleeExpr as MemberAccess;
+            const aliasName = (member.object as Identifier).value;
+            const propName = (member.property as Identifier).value;
+            const modEntry = Object.entries(this.modules)
+                .find(([modKey]) => modKey.split("/").pop() === aliasName);
+            if (modEntry) {
+                const [, { ast }] = modEntry;
+                const decl = ast.body.find(e => e.type === "FunctionDeclaration" && (e as FunctionDeclaration).name.value === propName) as FunctionDeclaration | undefined;
+                if (decl) {
+                    const retName = decl.resolvedReturnType?.name ?? decl.returnType?.value ?? "void";
+                    const retTy = this.getType(retName);
+                    const paramT = decl.params.map(p => this.getType(p.paramType.value));
+                    const fnType = new FunctionType(paramT, retTy, false);
+                    const fullName = `${aliasName}.${propName}`;
+                    this.helper.fn(fullName, fnType, { linkage: Linkage.External, extern: true });
+                    if (retName === "void") this.voidCalls.add(fullName);
+                    fn = this.helper.mod.getFunction(fullName)!;
+                    fnName = fullName;
+                }
+            }
+        }
         if (!fn) throw new Error(`function ${fnName} not found`);
 
         const args = expr.args.map((arg: Expression) => this.genExpression(arg)).filter((v): v is Value => v !== null);
+
+        if (this.voidCalls.has(fnName)) {
+            this.helper.builder.call(fn, args, "");
+            return null;
+        }
         return this.helper.builder.call(fn, args);
     }
 
@@ -307,8 +366,32 @@ export class Codegen {
 
     generate() {
         for (const expr of this.ast.body) {
-            if (expr.type === "FunctionDeclaration") {
-                this.registerFunctionSignature(expr as FunctionDeclaration);
+            if (expr.type === "FunctionDeclaration" && (expr as FunctionDeclaration).modifiers.includes("extern")) {
+                const fnDecl = expr as FunctionDeclaration;
+                // native C imports use unprefixed names
+                const fnName = fnDecl.name.value;
+                const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                const retTy = this.getType(retName);
+                const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
+                const fnType = new FunctionType(paramT, retTy, false);
+                this.helper.fn(fnName, fnType, { linkage: Linkage.External, extern: true });
+                if (retName === "void") this.voidCalls.add(fnName);
+            }
+        }
+
+        for (const [modName, { ast }] of Object.entries(this.modules)) {
+            if (modName === this.name) continue;
+            const alias = modName.includes("/") ? modName.split("/").pop()! : modName;
+            for (const expr of ast.body) {
+                if (expr.type === "FunctionDeclaration" && !(expr as FunctionDeclaration).modifiers.includes("extern")) {
+                    const fnDecl = expr as FunctionDeclaration;
+                    const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                    const retTy = this.getType(retName);
+                    const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
+                    const fnType = new FunctionType(paramT, retTy, false);
+                    this.helper.fn(`${alias}.${fnDecl.name.value}`, fnType, { linkage: Linkage.External, extern: true });
+                    if (retName === "void") this.voidCalls.add(`${alias}.${fnDecl.name.value}`);
+                }
             }
         }
 
@@ -316,20 +399,21 @@ export class Codegen {
             if (expr.type === "FunctionDeclaration") {
                 this.genFunctionDeclaration(expr as FunctionDeclaration);
             } else if (expr.type in this.table) {
-                const gen = this.table[expr.type];
+                const gen = this.table[expr.type as ExpressionType];
                 gen && gen(expr);
             }
         }
-
         return this.helper.toString();
     }
 
-    private getType(name: string): Type {
-        const type = this.types[name];
+    private getType(name?: string): Type {
+        const key = name ?? "void";
+        const type = this.types[key];
+        
         if (!type) {
             const available = Object.keys(this.types).join(", ");
             throw new Error(
-                `unknown type: '${name}'.\navailable types: [${available}]\n` +
+                `unknown type: '${key}'.\navailable types: [${available}]\n` +
                 `this probably meant a type annotation or inference failed.`
             );
         }

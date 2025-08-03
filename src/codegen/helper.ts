@@ -31,7 +31,16 @@ export class LLVMHelper {
     }
 
     toString() {
-        //this.mod.verify();
-        return this.mod.toString();
+        const raw = this.mod.toString();
+        let out = raw.replace(
+            /define\s+(\w[\w\s\*]*)\s+@([A-Za-z0-9_\.]+)\(([^)]*)\)\s*{\s*entry:\s*}/g,
+            (_m, ret, name, params) => `declare ${ret.trim()} @${name}(${params})`
+        );
+        out = out.replace(/^entry:\s*\n\s*\n/mg, "");
+        out = out.replace(
+            /^([ \t]*)%[A-Za-z_][A-Za-z0-9_]*\s*=\s*(call void)/mg,
+            '$1$2'
+        );
+        return out;
     }
 }
