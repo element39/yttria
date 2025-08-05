@@ -557,41 +557,43 @@ export class Type {
 	private ptr: Pointer;
 	private kind: string;
 	private bitWidth?: number;
+	private elementType?: Type;
 
-	private constructor(ptr: Pointer, kind: string, bitWidth?: number) {
-		this.ptr = ptr;
-		this.kind = kind;
-		if (bitWidth !== undefined) this.bitWidth = bitWidth;
+	private constructor(ptr: Pointer, kind: string, bitWidth?: number, elementType?: Type) {
+        this.ptr = ptr;
+        this.kind = kind;
+        if (bitWidth !== undefined) this.bitWidth = bitWidth;
+        if (elementType) this.elementType = elementType;
+    }
+
+	/**
+	create a Type from a raw pointer (internal use)
+	tries to infer kind/bitWidth for int/float/double/pointer/void
+	*/
+	static fromRaw(ptr: Pointer): Type {
+		const ctx = new Context();
+		const known = [
+		{ t: Type.int1(ctx), kind: "int1", bitWidth: 1 },
+		{ t: Type.int8(ctx), kind: "int8", bitWidth: 8 },
+		{ t: Type.int16(ctx), kind: "int16", bitWidth: 16 },
+		{ t: Type.int32(ctx), kind: "int32", bitWidth: 32 },
+		{ t: Type.int64(ctx), kind: "int64", bitWidth: 64 },
+		{ t: Type.float(ctx), kind: "float" },
+		{ t: Type.double(ctx), kind: "double" },
+		{ t: Type.void(ctx), kind: "void" },
+		];
+
+		for (const k of known) {
+		if (k.t.handle === ptr) return new Type(ptr, k.kind, k.bitWidth);
+		}
+
+		const width = LLVMGetIntTypeWidth(ptr);
+		if (typeof width === 'number' && width > 0) {
+			return new Type(ptr, `int${width}`, width);
+		}
+		// fallback: pointer type
+		return new Type(ptr, "unknown");
 	}
-
-  /**
-   create a Type from a raw pointer (internal use)
-   tries to infer kind/bitWidth for int/float/double/pointer/void
-   */
-  static fromRaw(ptr: Pointer): Type {
-	const ctx = new Context();
-	const known = [
-	  { t: Type.int1(ctx), kind: "int1", bitWidth: 1 },
-	  { t: Type.int8(ctx), kind: "int8", bitWidth: 8 },
-	  { t: Type.int16(ctx), kind: "int16", bitWidth: 16 },
-	  { t: Type.int32(ctx), kind: "int32", bitWidth: 32 },
-	  { t: Type.int64(ctx), kind: "int64", bitWidth: 64 },
-	  { t: Type.float(ctx), kind: "float" },
-	  { t: Type.double(ctx), kind: "double" },
-	  { t: Type.void(ctx), kind: "void" },
-	];
-
-	for (const k of known) {
-	  if (k.t.handle === ptr) return new Type(ptr, k.kind, k.bitWidth);
-	}
-
-	const width = LLVMGetIntTypeWidth(ptr);
-	if (typeof width === 'number' && width > 0) {
-		return new Type(ptr, `int${width}`, width);
-	}
-	// fallback: pointer type
-	return new Type(ptr, "unknown");
-  }
 
 	/**
 	 get i1 type
@@ -661,13 +663,17 @@ export class Type {
 	 @param addressSpace address space
 	*/
 	static pointer(elementType: Type, addressSpace = 0): Type {
-		return new Type(LLVMPointerType(elementType.handle, addressSpace), "pointer");
-	}
+        return new Type(LLVMPointerType(elementType.handle, addressSpace), "pointer", undefined, elementType);
+    }
 
 	/**
 	 get the raw pointer
 	*/
 	get handle() { return this.ptr; }
+
+	getElementType(): Type | undefined {
+        return this.elementType;
+    }
 
 	/**
 	 check if this is an integer type, optionally with a specific bit width

@@ -125,10 +125,12 @@ export class TypeInferrer {
         const iv = v;
         let resolvedType: CheckerType;
         resolvedType = this.getTypeByValue(iv.value);
+
         if (!resolvedType) resolvedType = this.types["unknown"];
         if (this.environment.length > 0) {
             this.environment[this.environment.length - 1][iv.name.value] = resolvedType;
         }
+
         return {
             ...iv,
             resolvedType

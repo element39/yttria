@@ -297,17 +297,35 @@ export class Codegen {
 
         this.helper.builder.insertInto(switchBB);
 
+        // broken
+        const switchTy = switchValue.getType();
+        const isStringType =
+            switchTy.isPointer() &&
+            switchTy.getElementType &&
+            switchTy.getElementType()!.isInt(8);
+
         for (const e of expr.cases) {
             if (e.value === "default") continue;
 
-            const expr = this.genExpression(e.value);
-            if (!expr) throw new Error(`case value must return a value: ${e.value}`);
+            const caseExpr = this.genExpression(e.value);
+            if (!caseExpr) throw new Error(`case value must return a value: ${e.value}`);
 
             const caseBlock = caseBlocks.shift();
             if (!caseBlock) throw new Error("No case block available for switch expression");
 
+            let cond;
+            if (isStringType) {
+                const strcmpFn = this.helper.mod.getFunction("strcmp");
+                if (!strcmpFn) throw new Error("builtin strcmp not found");
+
+                const cmpResult = this.helper.builder.call(strcmpFn, [switchValue, caseExpr]);
+                cond = this.helper.builder.icmpEQ(cmpResult, Value.constInt(Type.int32(this.helper.ctx), 0));
+            } else {
+                cond = this.helper.builder.icmpEQ(switchValue, caseExpr);
+            }
+
             this.helper.builder.condBr(
-                this.helper.builder.icmpEQ(switchValue, expr),
+                cond,
                 caseBlock,
                 defaultBB || endBB
             );
@@ -321,11 +339,12 @@ export class Codegen {
 
         this.helper.builder.insertInto(endBB);
         
-        return null
+        return null;
     }
 
     private genExpression(expr: Expression, expectedType?: Type | null): Value | null {
         const tbl: { [key in ExpressionType]?: (expr: any, expectedType?: Type | null) => Value | null } = {
+
             NumberLiteral: (expr, expectedType) => {
                 const t = expectedType ?? Type.int32(this.helper.ctx);
                 if (t.isFloat()) {
@@ -344,7 +363,7 @@ export class Codegen {
             // TODO: there gotta be a better way of doing this
             StringLiteral: (expr, expectedType) => {
                 const val = this.helper.mod.addGlobalString(expr.value);
-                return this.helper.builder.bitcast(val, Type.pointer(Type.int8(this.helper.ctx)));
+                return this.helper.builder.bitcast(val, this.types["string"]);
             },
 
             Identifier: (expr: any) => {

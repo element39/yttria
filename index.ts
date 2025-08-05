@@ -22,30 +22,18 @@ const program = `
 use std/io
 
 fn main() -> int {
-  let x: int = 5
-  let y: int = 10
-
-  switch (x) {
-    5 -> {
-        io.println("5")
+    let x := "hi"
+    
+    switch (x) {
+        "hi" -> {
+            io.println("x is hi")
+        }
+        default -> {
+            io.println("x is something else")
+        }
     }
-    default -> {
-        io.println("default")
-    }
-  }
 
-  switch (y) {
-    5 -> {
-        io.println("5")
-    }
-    default -> {
-        io.println("default")
-    }
-  }
-
-  io.println("switched")
-
-  return 0
+    return 0
 }
 `.trim()
 
@@ -93,9 +81,10 @@ for (const [name, mod] of Object.entries(modules)) {
     const ti = new TypeInferrer(mod.ast)
     const ist = ti.infer()
     modules[name].ast = ist
+    if (name === "main") await Bun.write("out/inferred.json", JSON.stringify(ist, null, 2))
 
     const infTime = performance.now()
-    console.log(`   inferred types in ${(infTime - start).toFixed(3)}ms`)
+    console.log(`inferred types in ${(infTime - start).toFixed(3)}ms`)
 
     const tc = new TypeChecker(ist)
     const cst = tc.check()

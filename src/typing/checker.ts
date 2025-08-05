@@ -34,7 +34,6 @@ export class TypeChecker {
     private checkVariableDeclaration(v: VariableDeclaration) {
         if (v.typeAnnotation && v.resolvedType) {
             const ints = ["int", "i8", "i16", "i32", "i64"];
-
             if (
                 v.typeAnnotation.value !== v.resolvedType.name &&
                 !(ints.includes(v.typeAnnotation.value) && ints.includes(v.resolvedType.name)) &&
@@ -44,9 +43,7 @@ export class TypeChecker {
                     `type mismatch in variable "${v.name.value}": expected ${v.typeAnnotation.value}, got ${v.resolvedType.name}`
                 );
             }
-        } else if (!v.typeAnnotation) {
-            this.errors.push(`variable "${v.name.value}" is missing type annotation`);
-        } else if (!v.resolvedType) {
+        } else if (!v.typeAnnotation && !v.resolvedType) {
             this.errors.push(`cannot resolve type for variable "${v.name.value}"`);
         }
     }
