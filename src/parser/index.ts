@@ -496,7 +496,7 @@ export class Parser {
             })()
 
             if (this.peek().literal !== "->") {
-                throw new Error("expected '->' after case value")
+                throw new Error(`expected '->' after case value, got "${this.peek().literal}"`)
             }
             this.advance()
             

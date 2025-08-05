@@ -22,18 +22,28 @@ const program = `
 use std/io
 
 fn main() -> int {
-  let s1: string = "apple"
-  let s2: string = "banana"
+  let x: int = 5
+  let y: int = 10
 
-  let result: int = strcmp(s1, s2)
-
-  if (result == 0) {
-    io.println("strings are equal")
-  } else if (result < 0) {
-    io.println("apple comes before banana")
-  } else {
-    io.println("apple comes after banana")
+  switch (x) {
+    5 -> {
+        io.println("5")
+    }
+    default -> {
+        io.println("default")
+    }
   }
+
+  switch (y) {
+    5 -> {
+        io.println("5")
+    }
+    default -> {
+        io.println("default")
+    }
+  }
+
+  io.println("switched")
 
   return 0
 }

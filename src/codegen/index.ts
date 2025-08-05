@@ -1,6 +1,6 @@
 import { BasicBlock, FunctionType, Linkage, Type, Value } from "../bindings";
 import { ResolvedModule } from "../module/types";
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -19,6 +19,7 @@ export class Codegen {
         VariableDeclaration: this.genVariableDeclaration.bind(this),
 
         IfExpression: this.genIfExpression.bind(this),
+        SwitchExpression: this.genSwitchExpression.bind(this),
     };
 
     private registerFunctionSignature(expr: FunctionDeclaration): void {
@@ -249,6 +250,78 @@ export class Codegen {
         }
 
         return null;
+    }
+
+    private genSwitchExpression(expr: SwitchExpression): Value | null {
+        const block = this.helper.builder.getInsertBlock();
+        if (!block || !block.parent) throw new Error("no current block for switch expression");
+
+        const switchValue = this.genExpression(expr.value);
+        if (!switchValue) throw new Error("switch value must return a value");
+
+        this.helper.builder.insertInto(block);
+
+        const switchBB = block.parent.addBlock("switch_cond");
+        const endBB = block.parent!.addBlock("switch_end");
+
+        this.helper.builder.br(switchBB);
+        
+        const caseBlocks = expr.cases.filter(e => e.value !== "default").map((e, index) => {
+            const caseBlock = block.parent!.addBlock("case")
+            this.helper.builder.insertInto(caseBlock);
+
+            e.body.forEach(b => {
+                if (!(b.type in this.table)) return;
+                const fnGen = this.table[b.type];
+                fnGen && fnGen(b);
+            });
+
+            this.helper.builder.br(endBB);
+
+            return caseBlock;
+        })
+
+        const defaultBlock = expr.cases.find(e => e.value === "default");
+        const defaultBB = defaultBlock ? block.parent!.addBlock("default") : null;
+
+        if (defaultBlock) {
+            this.helper.builder.insertInto(defaultBB!);
+            defaultBlock.body.forEach(b => {
+                if (!(b.type in this.table)) return;
+                const fnGen = this.table[b.type];
+                fnGen && fnGen(b);
+            });
+
+            this.helper.builder.br(endBB);
+        }
+
+        this.helper.builder.insertInto(switchBB);
+
+        for (const e of expr.cases) {
+            if (e.value === "default") continue;
+
+            const expr = this.genExpression(e.value);
+            if (!expr) throw new Error(`case value must return a value: ${e.value}`);
+
+            const caseBlock = caseBlocks.shift();
+            if (!caseBlock) throw new Error("No case block available for switch expression");
+
+            this.helper.builder.condBr(
+                this.helper.builder.icmpEQ(switchValue, expr),
+                caseBlock,
+                defaultBB || endBB
+            );
+        }
+
+        if (defaultBB) {
+            this.helper.builder.br(defaultBB);
+        } else {
+            this.helper.builder.br(endBB);
+        }
+
+        this.helper.builder.insertInto(endBB);
+        
+        return null
     }
 
     private genExpression(expr: Expression, expectedType?: Type | null): Value | null {

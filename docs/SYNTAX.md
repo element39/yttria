@@ -153,26 +153,16 @@ while (x < 10) {
 }
 
 switch (c) {
-    case 1, 2 -> {
+    1, 2 -> {
         io.println("c is 1 or 2")
     }
-    case 3 -> {
+    3 -> {
         io.println("c is 3")
     }
     default -> {
         io.println("c is something else")
     }
 }
-
-// commented out pre-0.0.2 syntax (no longer supported)
-// switch (c) {
-//     case 1:
-//         io.println("c is 1")
-//     case 2:
-//         io.println("c is 2")
-//     default:
-//         io.println("c is something else")
-// }
 ```
 
 ### error handling
