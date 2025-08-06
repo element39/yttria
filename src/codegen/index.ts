@@ -1,4 +1,4 @@
-import { BasicBlock, FunctionType, Linkage, Type, Value } from "../bindings";
+import { BasicBlock, Func, FunctionType, Linkage, Type, Value } from "../bindings";
 import { ResolvedModule } from "../module/types";
 import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
@@ -259,84 +259,99 @@ export class Codegen {
         const switchValue = this.genExpression(expr.value);
         if (!switchValue) throw new Error("switch value must return a value");
 
-        this.helper.builder.insertInto(block);
-
-        const switchBB = block.parent.addBlock("switch_cond");
-        const endBB = block.parent!.addBlock("switch_end");
-
-        this.helper.builder.br(switchBB);
+        const parentFunc = block.parent;
         
-        const caseBlocks = expr.cases.filter(e => e.value !== "default").map((e, index) => {
-            const caseBlock = block.parent!.addBlock("case")
-            this.helper.builder.insertInto(caseBlock);
-
-            e.body.forEach(b => {
-                if (!(b.type in this.table)) return;
-                const fnGen = this.table[b.type];
-                fnGen && fnGen(b);
-            });
-
-            this.helper.builder.br(endBB);
-
-            return caseBlock;
-        })
-
-        const defaultBlock = expr.cases.find(e => e.value === "default");
-        const defaultBB = defaultBlock ? block.parent!.addBlock("default") : null;
-
-        if (defaultBlock) {
-            this.helper.builder.insertInto(defaultBB!);
-            defaultBlock.body.forEach(b => {
-                if (!(b.type in this.table)) return;
-                const fnGen = this.table[b.type];
-                fnGen && fnGen(b);
-            });
-
+        const endBB = parentFunc.addBlock("switch_end");
+        
+        this.helper.builder.insertInto(block);
+        
+        const regularCases = expr.cases.filter(e => e.value !== "default");
+        
+        const defaultCase = expr.cases.find(e => e.value === "default");
+        const defaultBB = defaultCase ? parentFunc.addBlock("switch_default") : null;
+        
+        const conditionBlocks: BasicBlock[] = [];
+        const caseBlocks: BasicBlock[] = [];
+        
+        for (let i = 0; i < regularCases.length; i++) {
+            conditionBlocks.push(parentFunc.addBlock(`switch_cond_${i}`));
+            caseBlocks.push(parentFunc.addBlock(`switch_case_${i}`));
+        }
+        
+        if (conditionBlocks.length > 0) {
+            this.helper.builder.br(conditionBlocks[0]);
+        } else if (defaultBB) {
+            this.helper.builder.br(defaultBB);
+        } else {
             this.helper.builder.br(endBB);
         }
-
-        this.helper.builder.insertInto(switchBB);
-
-        // broken
-        const switchTy = switchValue.getType();
-        const isStringType =
-            switchTy.isPointer() &&
-            switchTy.getElementType &&
-            switchTy.getElementType()!.isInt(8);
-
-        for (const e of expr.cases) {
-            if (e.value === "default") continue;
-
-            const caseExpr = this.genExpression(e.value);
-            if (!caseExpr) throw new Error(`case value must return a value: ${e.value}`);
-
-            const caseBlock = caseBlocks.shift();
-            if (!caseBlock) throw new Error("No case block available for switch expression");
-
+        
+        let isStringType = false;
+        if (expr.value.type === "Identifier") {
+            // Look up the variable in scopes to get its inferred type
+            const identifier = expr.value as Identifier;
+            const found = [...this.scopes].reverse().find(scope => identifier.value in scope);
+            if (found) {
+                const switchTy = switchValue.getType();
+                isStringType = switchTy.isPointer() || false;
+            }
+        } else {
+            const switchTy = switchValue.getType();
+            isStringType = (switchTy.isPointer() && 
+                typeof switchTy.getElementType === 'function' && 
+                switchTy.getElementType()?.isInt(8)) || false;
+        }
+                
+        let strcmpFn: Func | undefined;
+        if (isStringType) {
+            strcmpFn = this.helper.mod.getFunction("strcmp");
+            if (!strcmpFn) {
+                throw new Error("builtin strcmp function not found");
+            }
+        }
+        
+        for (let i = 0; i < regularCases.length; i++) {
+            const caseValue = regularCases[i];
+            
+            this.helper.builder.insertInto(conditionBlocks[i]);
+            
+            const caseExpr = this.genExpression(caseValue.value as Expression);
+            if (!caseExpr) throw new Error(`case value must return a value: ${caseValue.value}`);
+            
             let cond;
-            if (isStringType) {
-                const strcmpFn = this.helper.mod.getFunction("strcmp");
-                if (!strcmpFn) throw new Error("builtin strcmp not found");
-
+            if (isStringType && strcmpFn) {
                 const cmpResult = this.helper.builder.call(strcmpFn, [switchValue, caseExpr]);
                 cond = this.helper.builder.icmpEQ(cmpResult, Value.constInt(Type.int32(this.helper.ctx), 0));
             } else {
                 cond = this.helper.builder.icmpEQ(switchValue, caseExpr);
             }
-
-            this.helper.builder.condBr(
-                cond,
-                caseBlock,
-                defaultBB || endBB
-            );
-        }
-
-        if (defaultBB) {
-            this.helper.builder.br(defaultBB);
-        } else {
+            
+            const nextBlock = (i < regularCases.length - 1) 
+                ? conditionBlocks[i + 1]
+                : defaultBB || endBB;
+                
+            this.helper.builder.condBr(cond, caseBlocks[i], nextBlock);
+            
+            this.helper.builder.insertInto(caseBlocks[i]);
+            caseValue.body.forEach(bodyExpr => {
+                if (!(bodyExpr.type in this.table)) return;
+                const fnGen = this.table[bodyExpr.type];
+                fnGen && fnGen(bodyExpr);
+            });
+            
             this.helper.builder.br(endBB);
         }
-
+        
+        if (defaultBB && defaultCase) {
+            this.helper.builder.insertInto(defaultBB);
+            defaultCase.body.forEach(bodyExpr => {
+                if (!(bodyExpr.type in this.table)) return;
+                const fnGen = this.table[bodyExpr.type];
+                fnGen && fnGen(bodyExpr);
+            });
+            this.helper.builder.br(endBB);
+        }
+        
         this.helper.builder.insertInto(endBB);
         
         return null;

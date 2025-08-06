@@ -33,6 +33,7 @@ import {
 	LLVMGetInsertBlock,
 	LLVMGetIntTypeWidth,
 	LLVMGetParam,
+	LLVMGetTypeKind,
 	LLVMInt16TypeInContext,
 	LLVMInt1TypeInContext,
 	LLVMInt32TypeInContext,
@@ -569,30 +570,51 @@ export class Type {
 	/**
 	create a Type from a raw pointer (internal use)
 	tries to infer kind/bitWidth for int/float/double/pointer/void
-	*/
-	static fromRaw(ptr: Pointer): Type {
-		const ctx = new Context();
-		const known = [
-		{ t: Type.int1(ctx), kind: "int1", bitWidth: 1 },
-		{ t: Type.int8(ctx), kind: "int8", bitWidth: 8 },
-		{ t: Type.int16(ctx), kind: "int16", bitWidth: 16 },
-		{ t: Type.int32(ctx), kind: "int32", bitWidth: 32 },
-		{ t: Type.int64(ctx), kind: "int64", bitWidth: 64 },
-		{ t: Type.float(ctx), kind: "float" },
-		{ t: Type.double(ctx), kind: "double" },
-		{ t: Type.void(ctx), kind: "void" },
-		];
+	*/	static fromRaw(ptr: Pointer): Type {
+		const typeKind = LLVMGetTypeKind(ptr);
 
-		for (const k of known) {
-		if (k.t.handle === ptr) return new Type(ptr, k.kind, k.bitWidth);
+		enum LLVMTypeKind {
+			Void = 0,
+			Half = 1,
+			Float = 2,
+			Double = 3,
+			X86_FP80 = 4,
+			FP128 = 5,
+			PPC_FP128 = 6,
+			Label = 7,
+			Integer = 8,
+			Function = 9,
+			Struct = 10,
+			Array = 11,
+			Pointer = 12,
+			Vector = 13,
+			Metadata = 14,
+			X86_MMX = 15,
+			Token = 16,
+			ScalableVector = 17,
+			BFloat = 18,
+			X86_AMX = 19,
+			TargetExt = 20
 		}
 
-		const width = LLVMGetIntTypeWidth(ptr);
-		if (typeof width === 'number' && width > 0) {
-			return new Type(ptr, `int${width}`, width);
+		switch (typeKind) {
+			case LLVMTypeKind.Void:
+				return new Type(ptr, "void");
+			case LLVMTypeKind.Float:
+				return new Type(ptr, "float");
+			case LLVMTypeKind.Double:
+				return new Type(ptr, "double");
+			case LLVMTypeKind.Pointer:
+				return new Type(ptr, "pointer");
+			case LLVMTypeKind.Integer:
+				const width = LLVMGetIntTypeWidth(ptr);
+				if (typeof width === 'number' && width > 0) {
+					return new Type(ptr, `int${width}`, width);
+				}
+				return new Type(ptr, "int");
+			default:
+				return new Type(ptr, "unknown");
 		}
-		// fallback: pointer type
-		return new Type(ptr, "unknown");
 	}
 
 	/**

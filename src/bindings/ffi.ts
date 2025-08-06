@@ -1,6 +1,9 @@
 import { dlopen } from "bun:ffi";
+import { platform } from "os";
 
-const lib = dlopen("./LLVM-C.dll", {
+const location = platform() === "win32" ? "LLVM-C.dll" : "libLLVM-C.so";
+
+const lib = dlopen(location, {
 	LLVMConstStringInContext: { args: ["ptr", "cstring", "uint32_t", "bool"], returns: "ptr" },
 	LLVMArrayType: { args: ["ptr", "uint32_t"], returns: "ptr" },
 	LLVMAddGlobal: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
@@ -70,7 +73,8 @@ const lib = dlopen("./LLVM-C.dll", {
 
 	// introspection
 	LLVMGetIntTypeWidth: { args: ["ptr"], returns: "uint32_t" },
-	LLVMTypeOf: { args: ["ptr"], returns: "ptr" }
+	LLVMTypeOf: { args: ["ptr"], returns: "ptr" },
+	LLVMGetTypeKind: { args: ["ptr"], returns: "uint32_t" }
 });
 
 export const {
@@ -129,5 +133,6 @@ export const {
 	LLVMAddGlobal,
 	LLVMSetInitializer,
 	LLVMSetGlobalConstant,
-	LLVMBuildBitCast
+	LLVMBuildBitCast,
+	LLVMGetTypeKind
 } = lib.symbols;
