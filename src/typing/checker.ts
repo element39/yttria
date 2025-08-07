@@ -5,7 +5,6 @@ export class TypeChecker {
     private errors: string[] = [];
 
     private table: { [key in ExpressionType]?: (expr: any) => void } = {
-        FunctionDeclaration: this.checkFunctionDeclaration.bind(this),
         VariableDeclaration: this.checkVariableDeclaration.bind(this),
     };
 
@@ -22,29 +21,18 @@ export class TypeChecker {
         return this.errors;
     }
 
-    private checkFunctionDeclaration(fn: FunctionDeclaration) {
-        for (const xpr of fn.body) {
-            if (xpr.type in this.table) {
-                this.table[xpr.type]!(xpr);
-            }
+    private checkVariableDeclaration(expr: VariableDeclaration) {
+        if (!expr.resolvedType) {
+            this.errors.push(`could not resolve type for variable "${expr.name.value}"`);
+            return;
         }
-    }
 
-    // TODO: make this better
-    private checkVariableDeclaration(v: VariableDeclaration) {
-        if (v.typeAnnotation && v.resolvedType) {
-            const ints = ["int", "i8", "i16", "i32", "i64"];
-            if (
-                v.typeAnnotation.value !== v.resolvedType.name &&
-                !(ints.includes(v.typeAnnotation.value) && ints.includes(v.resolvedType.name)) &&
-                v.resolvedType.name !== "unknown"
-            ) {
+        if (expr.typeAnnotation && expr.resolvedType.type === "CheckerType") {
+            if (expr.typeAnnotation.value !== expr.resolvedType.value) {
                 this.errors.push(
-                    `type mismatch in variable "${v.name.value}": expected ${v.typeAnnotation.value}, got ${v.resolvedType.name}`
+                    `type mismatch for variable '${expr.name.value}': expected ${expr.typeAnnotation.value}, got ${expr.resolvedType.value}`
                 );
             }
-        } else if (!v.typeAnnotation && !v.resolvedType) {
-            this.errors.push(`cannot resolve type for variable "${v.name.value}"`);
         }
     }
 }

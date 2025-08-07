@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import LLVM, { Context, IRBuilder, Module, Type, Value } from './index';
+import LLVM, { Context, IRBuilder, Module, Type, Value } from '../../src/bindings/index';
 
 describe('llvm-bun', () => {
 	it('bitcasts between pointer types', () => {

@@ -1,5 +1,5 @@
 import { Modifier } from "../lexer/token"
-import { CheckerType } from "../typing/types"
+import { CheckerPlaceholder, CheckerType } from "../typing/types"
 
 export type Expression = {
     type: ExpressionType
@@ -123,7 +123,7 @@ export type VariableDeclaration = Expression & {
     name: Identifier
     value: Expression
     typeAnnotation?: Identifier
-    resolvedType?: CheckerType
+    resolvedType?: CheckerType | CheckerPlaceholder
     mutable: boolean
 }
 

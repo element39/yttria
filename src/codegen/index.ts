@@ -24,7 +24,7 @@ export class Codegen {
 
     private registerFunctionSignature(expr: FunctionDeclaration): void {
         const fnName = this.alias ? `${this.alias}.${expr.name.value}` : expr.name.value;
-        const retName = expr.resolvedReturnType?.name ?? expr.returnType?.value ?? "void";
+        const retName = expr.resolvedReturnType?.value ?? expr.returnType?.value ?? "void";
         const retTy = this.getType(retName);
         const paramTypes = expr.params.map(param => this.getType(param.paramType.value));
         const fnType = new FunctionType(paramTypes, retTy, false);
@@ -67,7 +67,7 @@ export class Codegen {
     private currentReturnType: Type | null = null;
 
     private genFunctionDeclaration(expr: FunctionDeclaration): Value | null {
-        const retName2 = expr.resolvedReturnType?.name ?? expr.returnType?.value ?? "void";
+        const retName2 = expr.resolvedReturnType?.value ?? expr.returnType?.value ?? "void";
         const retTy2 = this.getType(retName2);
         this.currentReturnType = retTy2;
 
@@ -98,7 +98,7 @@ export class Codegen {
             }
         }
 
-        if (!hasReturn && (expr.resolvedReturnType?.name ?? expr.returnType?.value) === "void") {
+        if (!hasReturn && (expr.resolvedReturnType?.value ?? expr.returnType?.value) === "void") {
             this.helper.builder.ret();
         }
 
@@ -117,7 +117,11 @@ export class Codegen {
 
     private genVariableDeclaration(expr: VariableDeclaration): Value | null {
         const varName = expr.name.value;
-        const varType = this.getType(expr.typeAnnotation?.value || expr.resolvedType?.name || "int");
+        const varType = this.getType(
+            expr.typeAnnotation?.value ||
+            (expr.resolvedType && "name" in expr.resolvedType ? (expr.resolvedType as any).name : undefined) ||
+            "int"
+        );
 
         const value = this.genExpression(expr.value, varType);
         if (!value) throw new Error(`Failed to generate value for variable ${expr.name.value}`);
@@ -160,7 +164,7 @@ export class Codegen {
                 const [, { ast }] = modEntry;
                 const decl = ast.body.find(e => e.type === "FunctionDeclaration" && (e as FunctionDeclaration).name.value === propName) as FunctionDeclaration | undefined;
                 if (decl) {
-                    const retName = decl.resolvedReturnType?.name ?? decl.returnType?.value ?? "void";
+                    const retName = decl.resolvedReturnType?.value ?? decl.returnType?.value ?? "void";
                     const retTy = this.getType(retName);
                     const paramT = decl.params.map(p => this.getType(p.paramType.value));
                     const fnType = new FunctionType(paramT, retTy, false);
@@ -479,7 +483,7 @@ export class Codegen {
                         if (expr.type === "FunctionDeclaration") {
                             const fnDecl = expr as FunctionDeclaration;
                             const fnName = fnDecl.name.value;
-                            const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                            const retName = fnDecl.resolvedReturnType?.value ?? fnDecl.returnType?.value ?? "void";
                             const retTy = this.getType(retName);
                             const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
                             const fnType = new FunctionType(paramT, retTy, false);
@@ -498,7 +502,7 @@ export class Codegen {
                 const fnDecl = expr as FunctionDeclaration;
 
                 const fnName = fnDecl.name.value;
-                const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                const retName = fnDecl.resolvedReturnType?.value ?? fnDecl.returnType?.value ?? "void";
                 const retTy = this.getType(retName);
                 const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
                 const fnType = new FunctionType(paramT, retTy, false);
@@ -513,7 +517,7 @@ export class Codegen {
             for (const expr of ast.body) {
                 if (expr.type === "FunctionDeclaration" && !(expr as FunctionDeclaration).modifiers.includes("extern")) {
                     const fnDecl = expr as FunctionDeclaration;
-                    const retName = fnDecl.resolvedReturnType?.name ?? fnDecl.returnType?.value ?? "void";
+                    const retName = fnDecl.resolvedReturnType?.value ?? fnDecl.returnType?.value ?? "void";
                     const retTy = this.getType(retName);
                     const paramT = fnDecl.params.map(p => this.getType(p.paramType.value));
                     const fnType = new FunctionType(paramT, retTy, false);
