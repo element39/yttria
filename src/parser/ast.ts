@@ -66,7 +66,7 @@ export type FunctionDeclaration = Expression & {
     name: Identifier
     params: FunctionParam[]
     returnType?: Identifier
-    resolvedReturnType?: CheckerType
+    resolvedReturnType?: CheckerType | CheckerPlaceholder
     body: Expression[]
     modifiers: Modifier[]
 }
