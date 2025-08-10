@@ -66,7 +66,9 @@ export class TypeInferrer {
     private inferType(expr: Expression): CheckerType | CheckerPlaceholder {
         switch (expr.type) {
             case "NumberLiteral":
-                return this.types.int;
+                return Number.isInteger((expr as NumberLiteral).value)
+                    ? this.types.int
+                    : this.types.float;
             case "StringLiteral":
                 return this.types.string;
             case "BooleanLiteral":

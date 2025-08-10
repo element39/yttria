@@ -8,8 +8,10 @@ import { TypeChecker } from "../../src/typing/checker";
 
 it("checks for type errors", () => {
     const mod = `
-let y := 5
-let x := y
+
+let a := 10
+let b := 3.14
+
 `.trim();
 
     const tokens = new Lexer(mod).lex();
@@ -18,6 +20,10 @@ let x := y
     const inferred = inf.infer();
 
     console.log(JSON.stringify(inferred.body, null, 2));
+    expect(inferred.body.length).toBe(2);
+
+    const chk = new TypeChecker(inferred);
+    const errors = chk.check();
 });
 
 // it("checks variables", () => {

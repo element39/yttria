@@ -34,5 +34,9 @@ export class TypeChecker {
                 );
             }
         }
+
+        if (expr.resolvedType.type === "CheckerPlaceholder") {
+            this.errors.push(`type inference failed for variable '${expr.name.value}'`);
+        }
     }
 }
