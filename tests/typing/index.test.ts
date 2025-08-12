@@ -6,7 +6,7 @@ import { TypeInferrer } from "../../src/typing/inference";
 import { CheckerType } from "../../src/typing/types";
 import { TypeChecker } from "../../src/typing/checker";
 
-it("variables", () => {
+it("constrained variables", () => {
     const mod = `
 let a := 5
 let x := a * 2
@@ -34,10 +34,32 @@ let y := x + a
     expect(errors.length).toBe(0);
 });
 
-it("type errors", () => {
+it("bool", () => {
     const mod = `
-let a: string = 5 + 1
+let a := false
+let b: bool = a
 `.trim();
+
+    const tokens = new Lexer(mod).lex();
+    const ast = new Parser(tokens).parse();
+    const inf = new TypeInferrer(ast);
+    const inferred = inf.infer();
+
+    expect((inferred.body[0] as VariableDeclaration).resolvedType!.type).toBe("CheckerType");
+    expect(((inferred.body[0] as VariableDeclaration).resolvedType as CheckerType).value).toBe("bool");
+
+    const chk = new TypeChecker(inferred);
+    const errors = chk.check();
+    
+    expect(errors.length).toBe(0);
+})
+
+it("type mismatch", () => {
+        const mod = `
+let a: string = 5 + 1
+let b: bool = a
+let c: int = b
+    `.trim();
 
     const tokens = new Lexer(mod).lex();
     const ast = new Parser(tokens).parse();
@@ -49,6 +71,8 @@ let a: string = 5 + 1
 
     const chk = new TypeChecker(inferred);
     const errors = chk.check();
-    
-    expect(errors.length).toBe(1);
+
+    //console.log(inferred.body);
+    console.log(errors)
+    expect(errors.length).toBe(4);
 })

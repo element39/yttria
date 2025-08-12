@@ -1,4 +1,5 @@
-import { ExpressionType, FunctionDeclaration, ProgramExpression, VariableDeclaration } from "../parser/ast";
+import { ExpressionType, FunctionDeclaration, Identifier, ProgramExpression, VariableDeclaration } from "../parser/ast";
+import { CheckerType, CheckerPlaceholder } from "./types";
 
 export class TypeChecker {
     private ast: ProgramExpression;
@@ -7,6 +8,8 @@ export class TypeChecker {
     private table: { [key in ExpressionType]?: (expr: any) => void } = {
         VariableDeclaration: this.checkVariableDeclaration.bind(this),
     };
+
+    private typeEnvironment = new Map<string, { resolvedType: CheckerType | CheckerPlaceholder, typeAnnotation?: Identifier }>();
 
     constructor(ast: ProgramExpression) {
         this.ast = ast;
@@ -38,5 +41,26 @@ export class TypeChecker {
         if (expr.resolvedType.type === "CheckerPlaceholder") {
             this.errors.push(`type inference failed for variable '${expr.name.value}'`);
         }
+
+        // Check for chained type mismatches through identifier assignments
+        if (expr.value && expr.value.type === "Identifier") {
+            const refName = (expr.value as Identifier).value;
+            const refInfo = this.typeEnvironment.get(refName);
+            if (
+                refInfo &&
+                refInfo.typeAnnotation &&
+                refInfo.resolvedType.type === "CheckerType" &&
+                refInfo.typeAnnotation.value !== refInfo.resolvedType.value
+            ) {
+                this.errors.push(
+                    `type mismatch for variable '${expr.name.value}': referenced variable '${refName}' has type mismatch (expected ${refInfo.typeAnnotation.value}, got ${refInfo.resolvedType.value})`
+                );
+            }
+        }
+
+        this.typeEnvironment.set(expr.name.value, {
+            resolvedType: expr.resolvedType,
+            typeAnnotation: expr.typeAnnotation
+        });
     }
 }

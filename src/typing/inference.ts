@@ -81,19 +81,11 @@ export class TypeInferrer {
         for (const c of this.constraints) {
             if (c.type === "BinaryConstraint") {
                 const { left, right } = c;
+                if (this.isConcrete(left) && this.isConcrete(right)) continue
 
-                if (this.isConcrete(left) && this.isConcrete(right)) {
-                    continue
-                }
-                else if (this.isPlaceholder(left) && this.isConcrete(right)) {
-                    this.replacePlaceholder(left.id, right);
-                }
-                else if (this.isConcrete(left) && this.isPlaceholder(right)) {
-                    this.replacePlaceholder(right.id, left);
-                }
-                else if (this.isPlaceholder(left) && this.isPlaceholder(right)) {
-                    this.mergePlaceholders(left.id, right.id);
-                }
+                else if (this.isPlaceholder(left) && this.isConcrete(right)) this.replacePlaceholder(left.id, right);
+                else if (this.isConcrete(left) && this.isPlaceholder(right)) this.replacePlaceholder(right.id, left);
+                else if (this.isPlaceholder(left) && this.isPlaceholder(right)) this.mergePlaceholders(left.id, right.id);
             }
         }
     }
