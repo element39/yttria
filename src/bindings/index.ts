@@ -174,6 +174,7 @@ private _funcs: Map<string, Func> = new Map();
 export class FunctionType {
 	private ptr: Pointer;
 	public params: Type[];
+	public readonly returnType: Type;
 
 	/**
 	 create a function type
@@ -183,12 +184,12 @@ export class FunctionType {
 	*/
 	constructor(params: Type[], ret: Type, isVarArg = false) {
 		this.params = params;
-		const buf = Buffer.allocUnsafe(params.length * 8);
+		this.returnType = ret;
+		const buf = params.length ? Buffer.allocUnsafe(params.length * 8) : Buffer.alloc(0);
 		for (let i = 0; i < params.length; ++i) {
-			if (!params[i]) {
-				throw new Error(`parameter at index ${i} is undefined, got`);
-			}
-			buf.writeBigUInt64LE(BigInt(params[i]!.handle), i * 8);
+			const p = params[i];
+			if (!p) throw new Error(`parameter at index ${i} is undefined`);
+			buf.writeBigUInt64LE(BigInt(p.handle), i * 8);
 		}
 		this.ptr = LLVMFunctionType(ret.handle, buf, params.length, isVarArg);
 	}
@@ -206,17 +207,19 @@ export class Func {
 private ptr: Pointer;
 private module: Module;
 public type?: FunctionType;
+	public readonly paramCount: number;
 
 	/**
 	 create a function object
 	 @param ptr pointer to the function
 	 @param module parent module
 	*/
-  constructor(ptr: Pointer, module: Module, type?: FunctionType) {
+	constructor(ptr: Pointer, module: Module, type?: FunctionType) {
 	this.ptr = ptr;
 	this.module = module;
 	this.type = type;
-  }
+	this.paramCount = type ? type.params.length : 0;
+	}
 
 	/**
 	 add a basic block to the function
@@ -241,8 +244,7 @@ public type?: FunctionType;
 	 @returns array of values
 	*/
 	getArgs(): Value[] {
-		const paramCount = (this as any)._paramCount ?? 2;
-		return Array.from({ length: paramCount }, (_, i) => this.getArg(i));
+		return Array.from({ length: this.paramCount }, (_, i) => this.getArg(i));
 	}
 
 	/**
@@ -290,7 +292,21 @@ export class BasicBlock {
 	}
 }
 
+export enum ICmpPredicate {
+	EQ = 32,
+	NE = 33,
+	UGT = 34,
+	UGE = 35,
+	ULT = 36,
+	ULE = 37,
+	SGT = 38,
+	SGE = 39,
+	SLT = 40,
+	SLE = 41
+}
+
 export class IRBuilder {
+	private _context: Context;
 	/**
 	 * Bitcast a value to another type (pointer or int of same width)
 	 * @param value The value to cast
@@ -326,9 +342,8 @@ export class IRBuilder {
 	 integer comparison equal (==)
 	*/
 	icmpEQ(left: Value, right: Value, name = "icmp_eq"): Value {
-		// LLVMIntEQ = 32
-		const valPtr = LLVMBuildICmp(this.ptr, 32, left.handle, right.handle, Buffer.from(name + "\0"));
-		return new Value(valPtr);
+		const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.EQ, left.handle, right.handle, Buffer.from(name + "\0"));
+		return new Value(valPtr, Type.int1(this._context));
 	}
 	/**
 	 * Get the current insertion block
@@ -344,42 +359,37 @@ export class IRBuilder {
 	 integer comparison not equal (!=)
 	*/
 	icmpNE(left: Value, right: Value, name = "icmp_ne"): Value {
-		// LLVMIntNE = 33
-		const valPtr = LLVMBuildICmp(this.ptr, 33, left.handle, right.handle, Buffer.from(name + "\0"));
-		return new Value(valPtr);
+		const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.NE, left.handle, right.handle, Buffer.from(name + "\0"));
+		return new Value(valPtr, Type.int1(this._context));
 	}
   /**
    integer comparison signed less than (<)
    */
-  icmpSLT(left: Value, right: Value, name = "icmp_slt"): Value {
-	// LLVMIntSLT = 40
-	const valPtr = LLVMBuildICmp(this.ptr, 40, left.handle, right.handle, Buffer.from(name + "\0"));
-	return new Value(valPtr);
-  }
+	icmpSLT(left: Value, right: Value, name = "icmp_slt"): Value {
+	const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.SLT, left.handle, right.handle, Buffer.from(name + "\0"));
+	return new Value(valPtr, Type.int1(this._context));
+	}
   /**
    integer comparison signed less or equal (<=)
    */
-  icmpSLE(left: Value, right: Value, name = "icmp_sle"): Value {
-	// LLVMIntSLE = 41
-	const valPtr = LLVMBuildICmp(this.ptr, 41, left.handle, right.handle, Buffer.from(name + "\0"));
-	return new Value(valPtr);
-  }
+	icmpSLE(left: Value, right: Value, name = "icmp_sle"): Value {
+	const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.SLE, left.handle, right.handle, Buffer.from(name + "\0"));
+	return new Value(valPtr, Type.int1(this._context));
+	}
   /**
    integer comparison signed greater than (>)
    */
-  icmpSGT(left: Value, right: Value, name = "icmp_sgt"): Value {
-	// LLVMIntSGT = 38
-	const valPtr = LLVMBuildICmp(this.ptr, 38, left.handle, right.handle, Buffer.from(name + "\0"));
-	return new Value(valPtr);
-  }
+	icmpSGT(left: Value, right: Value, name = "icmp_sgt"): Value {
+	const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.SGT, left.handle, right.handle, Buffer.from(name + "\0"));
+	return new Value(valPtr, Type.int1(this._context));
+	}
   /**
    integer comparison signed greater or equal (>=)
    */
-  icmpSGE(left: Value, right: Value, name = "icmp_sge"): Value {
-	// LLVMIntSGE = 39
-	const valPtr = LLVMBuildICmp(this.ptr, 39, left.handle, right.handle, Buffer.from(name + "\0"));
-	return new Value(valPtr);
-  }
+	icmpSGE(left: Value, right: Value, name = "icmp_sge"): Value {
+	const valPtr = LLVMBuildICmp(this.ptr, ICmpPredicate.SGE, left.handle, right.handle, Buffer.from(name + "\0"));
+	return new Value(valPtr, Type.int1(this._context));
+	}
 
 	/**
 	 call a function with arguments
@@ -388,20 +398,21 @@ export class IRBuilder {
 	 @param name optional result name
 	 @returns the result value
 	*/
-  call(fn: Func, args: Value[], name = "calltmp"): Value {
-	const argPtrs = Buffer.allocUnsafe(args.length * 8);
+	call(fn: Func, args: Value[], name = "calltmp"): Value {
+	const argPtrs = args.length ? Buffer.allocUnsafe(args.length * 8) : Buffer.alloc(0);
 	for (let i = 0; i < args.length; ++i) {
 	  argPtrs.writeBigUInt64LE(BigInt(args[i].handle), i * 8);
 	}
 	if (!fn.type) throw new Error("Func.type is required for IRBuilder.call");
 	const fnType = fn.type.handle;
 	const valPtr = LLVMBuildCall2(this.ptr, fnType, fn.handle, argPtrs, args.length, Buffer.from(name + "\0"));
-	return new Value(valPtr);
-  }
+	return new Value(valPtr, fn.type.returnType);
+	}
 	private ptr: Pointer;
 
 	constructor(context: Context) {
 		this.ptr = LLVMCreateBuilderInContext(context.handle);
+		this._context = context;
 	}
 
 
@@ -441,7 +452,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	add(a: Value, b: Value): Value {
-		return new Value(LLVMBuildAdd(this.ptr, a.handle, b.handle, Buffer.from("addtmp\0")));
+		return new Value(LLVMBuildAdd(this.ptr, a.handle, b.handle, Buffer.from("addtmp\0")), a.getType());
 	}
 
 	/**
@@ -451,7 +462,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	fadd(a: Value, b: Value): Value {
-		return new Value(LLVMBuildFAdd(this.ptr, a.handle, b.handle, Buffer.from("faddtmp\0")));
+		return new Value(LLVMBuildFAdd(this.ptr, a.handle, b.handle, Buffer.from("faddtmp\0")), a.getType());
 	}
 
 	/**
@@ -461,7 +472,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	fsub(a: Value, b: Value): Value {
-		return new Value(LLVMBuildFSub(this.ptr, a.handle, b.handle, Buffer.from("fsubtmp\0")));
+		return new Value(LLVMBuildFSub(this.ptr, a.handle, b.handle, Buffer.from("fsubtmp\0")), a.getType());
 	}
 
 	/**
@@ -471,7 +482,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	fmul(a: Value, b: Value): Value {
-		return new Value(LLVMBuildFMul(this.ptr, a.handle, b.handle, Buffer.from("fmultmp\0")));
+		return new Value(LLVMBuildFMul(this.ptr, a.handle, b.handle, Buffer.from("fmultmp\0")), a.getType());
 	}
 
 	/**
@@ -481,7 +492,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	sub(a: Value, b: Value): Value {
-		return new Value(LLVMBuildSub(this.ptr, a.handle, b.handle, Buffer.from("subtmp\0")));
+		return new Value(LLVMBuildSub(this.ptr, a.handle, b.handle, Buffer.from("subtmp\0")), a.getType());
 	}
 
 	/**
@@ -491,7 +502,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	mul(a: Value, b: Value): Value {
-		return new Value(LLVMBuildMul(this.ptr, a.handle, b.handle, Buffer.from("multmp\0")));
+		return new Value(LLVMBuildMul(this.ptr, a.handle, b.handle, Buffer.from("multmp\0")), a.getType());
 	}
 
 	/**
@@ -501,7 +512,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	sdiv(a: Value, b: Value): Value {
-		return new Value(LLVMBuildSDiv(this.ptr, a.handle, b.handle, Buffer.from("sdivtmp\0")));
+		return new Value(LLVMBuildSDiv(this.ptr, a.handle, b.handle, Buffer.from("sdivtmp\0")), a.getType());
 	}
 
 	/**
@@ -511,7 +522,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	udiv(a: Value, b: Value): Value {
-		return new Value(LLVMBuildUDiv(this.ptr, a.handle, b.handle, Buffer.from("udivtmp\0")));
+		return new Value(LLVMBuildUDiv(this.ptr, a.handle, b.handle, Buffer.from("udivtmp\0")), a.getType());
 	}
 
 	/**
@@ -521,7 +532,7 @@ export class IRBuilder {
 	 @returns the result value
 	 */
 	fdiv(a: Value, b: Value): Value {
-		return new Value(LLVMBuildFDiv(this.ptr, a.handle, b.handle, Buffer.from("fdivtmp\0")));
+		return new Value(LLVMBuildFDiv(this.ptr, a.handle, b.handle, Buffer.from("fdivtmp\0")), a.getType());
 	}
 
 	/**
