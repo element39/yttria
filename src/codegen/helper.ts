@@ -1,4 +1,4 @@
-import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module } from "../bindings";
+import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module, Value } from "../bindings";
 
 export class LLVMHelper {
     public name: string;
@@ -7,7 +7,7 @@ export class LLVMHelper {
     public mod: Module;
     public builder: IRBuilder;
 
-    currentFunction: Func | null = null;
+    // currentFunction: Func | null = null;
     
     constructor(name: string) {
         this.name = name
@@ -26,21 +26,20 @@ export class LLVMHelper {
         func = this.mod.createFunction(name, fnType, opts ?? { linkage: Linkage.External, extern: false });
         if (!opts?.extern)   this.builder.insertInto(func.addBlock("entry"));
 
-        this.currentFunction = func;
+        // this.currentFunction = func;
         return func;
     }
 
+    ret(value?: Value) {
+        // if (!this.currentFunction) {
+        //     throw new Error("No current function to return from");
+        // }
+
+        this.builder.ret(value);
+    }
+
     toString() {
-        const raw = this.mod.toString();
-        let out = raw.replace(
-            /define\s+(\w[\w\s\*]*)\s+@([A-Za-z0-9_\.]+)\(([^)]*)\)\s*{\s*entry:\s*}/g,
-            (_m, ret, name, params) => `declare ${ret.trim()} @${name}(${params})`
-        );
-        out = out.replace(/^entry:\s*\n\s*\n/mg, "");
-        out = out.replace(
-            /^([ \t]*)%[A-Za-z_][A-Za-z0-9_]*\s*=\s*(call void)/mg,
-            '$1$2'
-        );
-        return out;
+        this.mod.verify()
+        return this.mod.toString();
     }
 }

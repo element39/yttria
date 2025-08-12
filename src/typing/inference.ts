@@ -1,4 +1,4 @@
-import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType, FunctionDeclaration, IfExpression } from "../parser/ast";
+import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType, FunctionDeclaration, IfExpression, ReturnExpression } from "../parser/ast";
 import { Constraint, Checker, CheckerPlaceholder, CheckerType, BinaryConstraint } from "./types";
 
 export class TypeInferrer {
@@ -69,19 +69,56 @@ export class TypeInferrer {
         this.typeEnviroment = new Map(oldEnv);
 
         decl.params.forEach(param => {
-            // this.typeEnviroment.set(param.name.value, param.paramType.value ?? this.placeholder());
             this.typeEnviroment.set(param.name.value, this.getTypeOrThrow(param.paramType.value));
         });
 
+        const returnTypes: (CheckerType | CheckerPlaceholder)[] = [];
+
+        const collectReturnTypes = (expr: Expression): void => {
+            if (expr.type === "ReturnExpression") {
+                const retType = this.inferType((expr as ReturnExpression).value);
+                returnTypes.push(retType);
+            }
+            
+            if (expr.type === "IfExpression") {
+                const ifExpr = expr as IfExpression;
+                ifExpr.body.forEach(collectReturnTypes);
+                if (ifExpr.alternate) {
+                    ifExpr.alternate.body.forEach(collectReturnTypes);
+                }
+            }
+        };
+
         decl.body = decl.body.map(e => {
             if (e.type in this.table) {
+                collectReturnTypes(e);
                 return this.table[e.type]!(e);
             }
+            collectReturnTypes(e);
             return e;
         });
 
-        this.typeEnviroment = oldEnv;
+        let resolvedReturnType: CheckerType | CheckerPlaceholder | undefined;
+        if (returnTypes.length === 0) {
+            resolvedReturnType = this.types.void;
+        } else {
+            const concreteTypes = returnTypes.filter(t => this.isConcrete(t)) as CheckerType[];
+            if (concreteTypes.length === returnTypes.length) {
+                const firstType = concreteTypes[0];
 
+                if (concreteTypes.every(t => t.value === firstType.value)) {
+                    resolvedReturnType = firstType;
+                } else {
+                    resolvedReturnType = this.types.unknown;
+                }
+            } else {
+                resolvedReturnType = returnTypes[0];
+            }
+        }
+
+        decl.resolvedReturnType = resolvedReturnType;
+
+        this.typeEnviroment = oldEnv;
         return decl;
     }
 

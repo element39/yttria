@@ -22,18 +22,7 @@ const program = `
 use std/io
 
 fn main() -> int {
-    let x := "hi"
-    
-    switch (x) {
-        "hi" -> {
-            io.println("x is hi")
-        }
-        default -> {
-            io.println("x is something else")
-        }
-    }
-
-    return 0
+    return 5
 }
 `.trim()
 
