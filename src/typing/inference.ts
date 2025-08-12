@@ -1,11 +1,12 @@
-import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType } from "../parser/ast";
-import { Constraint, Checker, CheckerPlaceholder, CheckerType } from "./types";
+import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType, FunctionDeclaration } from "../parser/ast";
+import { Constraint, Checker, CheckerPlaceholder, CheckerType, BinaryConstraint } from "./types";
 
 export class TypeInferrer {
     private pid: number = 0;
     private ast: ProgramExpression;
 
     private typeEnviroment = new Map<string, CheckerType | CheckerPlaceholder>();
+    private constraints: Constraint[] = [];
 
     private types: Record<string, CheckerType> = {
         bool:   { type: "CheckerType", value: "bool" },
@@ -29,7 +30,8 @@ export class TypeInferrer {
     };
 
     private table: { [key in ExpressionType]?: (expr: any) => Expression } = {
-        VariableDeclaration: this.inferVariableDeclaration.bind(this)
+        VariableDeclaration: this.inferVariableDeclaration.bind(this),
+        FunctionDeclaration: this.inferFunctionDeclaration.bind(this),
     }
 
     constructor(ast: ProgramExpression) {
@@ -47,6 +49,8 @@ export class TypeInferrer {
             return expr;
         });
 
+        this.unify();
+        neue.body.forEach(expr => this.applyResolvedTypes(expr));
         return neue;
     }
 
@@ -58,6 +62,60 @@ export class TypeInferrer {
 
         return decl;
     }
+
+    private inferFunctionDeclaration(decl: FunctionDeclaration): FunctionDeclaration {
+        const oldEnv = this.typeEnviroment;
+        this.typeEnviroment = new Map(oldEnv);
+
+        decl.params.forEach(param => {
+            // this.typeEnviroment.set(param.name.value, param.paramType.value ?? this.placeholder());
+            this.typeEnviroment.set(param.name.value, this.getTypeOrThrow(param.paramType.value));
+        });
+
+        this.typeEnviroment = oldEnv;
+
+        return decl;
+    }
+
+    private unify() {
+        for (const c of this.constraints) {
+            if (c.type === "BinaryConstraint") {
+                const { left, right } = c;
+
+                if (this.isConcrete(left) && this.isConcrete(right)) {
+                    continue
+                }
+                else if (this.isPlaceholder(left) && this.isConcrete(right)) {
+                    this.replacePlaceholder(left.id, right);
+                }
+                else if (this.isConcrete(left) && this.isPlaceholder(right)) {
+                    this.replacePlaceholder(right.id, left);
+                }
+                else if (this.isPlaceholder(left) && this.isPlaceholder(right)) {
+                    this.mergePlaceholders(left.id, right.id);
+                }
+            }
+        }
+    }
+
+    private applyResolvedTypes(expr: Expression): void {
+        switch (expr.type) {
+            case "VariableDeclaration":
+                const vd = expr as VariableDeclaration;
+                const ty = this.typeEnviroment.get(vd.name.value);
+                if (ty && this.isConcrete(ty)) {
+                    vd.resolvedType = ty;
+                }
+                this.applyResolvedTypes(vd.value);
+                break;
+            case "BinaryExpression":
+                const be = expr as BinaryExpression;
+                this.applyResolvedTypes(be.left);
+                this.applyResolvedTypes(be.right);
+                break;
+        }
+    }
+
 
     private placeholder(): CheckerPlaceholder {
         return { type: "CheckerPlaceholder", id: this.pid++ };
@@ -76,16 +134,85 @@ export class TypeInferrer {
             case "Identifier":
                 return this.typeEnviroment.get((expr as Identifier).value) ?? this.placeholder();
             case "BinaryExpression":
-                const left = this.inferType((expr as BinaryExpression).left);
-                const right = this.inferType((expr as BinaryExpression).right);
-                if (left.type === "CheckerType" && right.type === "CheckerType") {
-                    if (left.value === right.value) {
-                        return left;
-                    }
+            const binExpr = expr as BinaryExpression;
+            const left = this.inferType(binExpr.left);
+            const right = this.inferType(binExpr.right);
+
+            if (this.isConcrete(left) && this.isConcrete(right)) {
+                if (binExpr.operator === "/") {
+                    return this.types.float;
                 }
+
+                if (left.value === right.value) {
+                    return left;
+                }
+
+                throw new Error(`type mismatch in ${binExpr.operator}: ${left.value} vs ${right.value}`);
+            } else {
+                this.constraints.push({
+                    type: "BinaryConstraint",
+                    left,
+                    right,
+                    operator: "=="
+                } as BinaryConstraint);
                 return this.placeholder();
+            }
         }
 
         return this.placeholder();
+    }
+
+    private getTypeOrThrow(name: string): CheckerType {
+        const type = this.types[name]
+        if (!type) {
+            throw new Error(`type not found for ${name}`);
+        }
+        return type;
+    }
+
+    private isConcrete(t: Checker): t is CheckerType {
+        return t.type === "CheckerType";
+    }
+
+    private isPlaceholder(t: Checker): t is CheckerPlaceholder {
+        return t.type === "CheckerPlaceholder";
+    }
+
+    private replacePlaceholder(id: number, withType: CheckerType) {
+        for (const [name, ty] of this.typeEnviroment) {
+            if (this.isPlaceholder(ty) && ty.id === id) {
+                this.typeEnviroment.set(name, withType);
+            }
+        }
+
+        for (const c of this.constraints) {
+            if (c.type === "BinaryConstraint") {
+                if (this.isPlaceholder(c.left) && c.left.id === id) {
+                    c.left = withType;
+                }
+                if (this.isPlaceholder(c.right) && c.right.id === id) {
+                    c.right = withType;
+                }
+            }
+        }
+    }
+
+    private mergePlaceholders(id1: number, id2: number) {
+        for (const [name, ty] of this.typeEnviroment) {
+            if (this.isPlaceholder(ty) && ty.id === id2) {
+                this.typeEnviroment.set(name, { type: "CheckerPlaceholder", id: id1 });
+            }
+        }
+
+        for (const c of this.constraints) {
+            if (c.type === "BinaryConstraint") {
+                if (this.isPlaceholder(c.left) && c.left.id === id2) {
+                    c.left.id = id1;
+                }
+                if (this.isPlaceholder(c.right) && c.right.id === id2) {
+                    c.right.id = id1;
+                }
+            }
+        }
     }
 }

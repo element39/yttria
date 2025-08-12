@@ -40,5 +40,5 @@ export type BinaryConstraint = {
     type: "BinaryConstraint"
     left: Checker
     right: Checker
-    operator: string
+    operator: "=="
 }
