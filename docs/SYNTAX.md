@@ -100,6 +100,7 @@ yttria allows destructuring with default values, making it easy to handle missin
 
 ```rs
 let {name, age = 18} := {name: "Bob"} // "Bob 18"
+let [x, y = 0] := [1, 2] // "1 2"
 ```
 #### destructuring with rest
 yttria supports destructuring with rest parameters, allowing you to capture remaining values in an array or object.
@@ -126,10 +127,17 @@ fn factorial(n: int) -> int {
     }
     return n * factorial(n - 1)
 }
+
+fn pwr(base: float, exp: int) -> float {
+    if (exp == 0) {
+        return 1
+    }
+    return base * pwr(base, exp - 1)
+}
 ```
 
 ### control flow
-yttria supports standard control flow constructs like `if`, `else`, `for`, and `while`. It also has a unique `switch` statement for pattern matching, like Javascript's `switch` but more powerful, and without the constant `break` statements.
+yttria supports standard control flow constructs like `if`, `else`, `for`, and `while`. It also has a unique `switch` statement for pattern matching, like Javascript's `switch` but more powerful, and without the constant `break` statements. yttria's if statements do not support braceless bodies, although you can make them a single line with braces such as `if (x < 10) { io.println("x is less than 10") }`
 
 ```rs
 if (a < b) {
