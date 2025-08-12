@@ -43,11 +43,12 @@ float // 64-bit floating point number
 
 bool // boolean, hard alias to i1
 
-string // utf8 string constant
-String // mutable heap string (hard alias to i8[])
+cstr // utf8 string constant
+string // mutable heap string (hard alias to i8[])
 char // single utf8 character
 
 null // null value (yttria is an expressive language, so null is still a value)
+// notice how there is there is no void type, null is used instead for consistency
 
 // composite types
 ...
@@ -61,8 +62,7 @@ type UserID = int
 type User = {
     id: UserID,
     name: string,
-    email:
-    string
+    email: string
 }
 ```
 
@@ -189,11 +189,11 @@ yttria has powerful pattern matching capabilities, allowing for more expressive 
 let point := new Point(1.0, 2.0)
 
 switch (point) {
-    case -> Point(x, y) as p {
+    Point(x, y) as p -> {
         io.println(`Point at ({p.x}, {p.y})`)
     }
 
-    case -> Point(x, y) as p if (p.x > 0 && p.y > 0) {
+    Point(x, y) as p if (p.x > 0 && p.y > 0) -> {
         io.println("Point is in the first quadrant")
     }
 
@@ -264,21 +264,23 @@ enum Color {
 
 fn printColor(color: Color) {
     switch (color) {
-        case -> Color.Red {
+        Color.Red -> {
             io.println("Red")
         }
 
-        case -> Color.Green {
+        Color.Green -> {
             io.println("Green")
         }
         
-        case -> Color.Blue {
+        Color.Blue -> {
             io.println("Blue")
         }
 
-        case -> Color.Custom(r, g, b) {
+        Color.Custom(r, g, b) -> {
             io.println(`Custom color: {r}, {g}, {b}`)
         }
+
+        default -> { io.println("Unknown color") }
     }
 }
 ```
@@ -354,7 +356,7 @@ fn main() {
 ```
 
 #### advanced macros
-yttria's macros can even swap out entire blocks of code using the `macro` keyword, allowing for more complex code generation and metaprogramming. Macros can also be used to create custom syntax, similar to Rust's procedural macros.
+yttria's macros can even swap out entire blocks of code using the `macro` keyword, allowing for more complex code generation and metaprogramming. macros can also be used to create custom syntax, similar to Rust's procedural macros. macro blocks are just like macro functions bu are called automatically
 
 ```rs
 fn main() {
@@ -406,7 +408,7 @@ yttria supports arrays, which are ordered collections of elements of the same ty
 ```rs
 let numbers := [1, 2, 3, 4, 5]
 const names: string[] = ["Alice", "Bob", "Charlie"]
-let mixed: string[] | int[] = [1, "Hello", 3.14]
+let mixed: (string | int | float)[] = [1, "Hello", 3.14]
 ```
 
 ### iterators
@@ -433,13 +435,13 @@ struct Color {
     let a: u8
 }
 
-foreign fn InitWindow(width: int, height: int, title: string) -> void
+foreign fn InitWindow(width: int, height: int, title: string) -> null
 foreign fn WindowShouldClose() -> bool
-foreign fn CloseWindow() -> void
-foreign fn BeginDrawing() -> void
-foreign fn EndDrawing() -> void
-foreign fn ClearBackground(color: Color) -> void
-foreign fn DrawText(text: string, posX: int, posY: int, fontSize: int, color: Color) -> void
+foreign fn CloseWindow() -> null
+foreign fn BeginDrawing() -> null
+foreign fn EndDrawing() -> null
+foreign fn ClearBackground(color: Color) -> null
+foreign fn DrawText(text: string, posX: int, posY: int, fontSize: int, color: Color) -> null
 
 // main.yt
 use path/to/raylib_bindings as r
@@ -463,5 +465,5 @@ yttria supports external functions, which are functions that are provided at lin
 
 ```rs
 extern fn printf(fmt: string, ...) -> int // from C standard library
-extern fn writeln(msg: string) -> void // from D standard library
+extern fn writeln(msg: string) -> null // from D standard library
 ```
