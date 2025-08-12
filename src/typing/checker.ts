@@ -25,6 +25,8 @@ export class TypeChecker {
     }
 
     private checkVariableDeclaration(expr: VariableDeclaration) {
+        console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        console.log(expr.name, expr.resolvedType)
         if (!expr.resolvedType) {
             this.errors.push(`could not resolve type for variable "${expr.name.value}"`);
             return;
@@ -42,7 +44,6 @@ export class TypeChecker {
             this.errors.push(`type inference failed for variable '${expr.name.value}'`);
         }
 
-        // Check for chained type mismatches through identifier assignments
         if (expr.value && expr.value.type === "Identifier") {
             const refName = (expr.value as Identifier).value;
             const refInfo = this.typeEnvironment.get(refName);

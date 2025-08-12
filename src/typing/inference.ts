@@ -1,4 +1,4 @@
-import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType, FunctionDeclaration } from "../parser/ast";
+import { ProgramExpression, Expression, VariableDeclaration, Identifier, NumberLiteral, BinaryExpression, ExpressionType, FunctionDeclaration, IfExpression } from "../parser/ast";
 import { Constraint, Checker, CheckerPlaceholder, CheckerType, BinaryConstraint } from "./types";
 
 export class TypeInferrer {
@@ -32,6 +32,7 @@ export class TypeInferrer {
     private table: { [key in ExpressionType]?: (expr: any) => Expression } = {
         VariableDeclaration: this.inferVariableDeclaration.bind(this),
         FunctionDeclaration: this.inferFunctionDeclaration.bind(this),
+        IfExpression: this.inferIfExpression.bind(this),
     }
 
     constructor(ast: ProgramExpression) {
@@ -72,9 +73,40 @@ export class TypeInferrer {
             this.typeEnviroment.set(param.name.value, this.getTypeOrThrow(param.paramType.value));
         });
 
+        decl.body = decl.body.map(e => {
+            if (e.type in this.table) {
+                return this.table[e.type]!(e);
+            }
+            return e;
+        });
+
         this.typeEnviroment = oldEnv;
 
         return decl;
+    }
+
+    private inferIfExpression(expr: IfExpression): IfExpression {
+        expr.inferredCondition = this.inferType(expr.condition);
+
+        expr.body = expr.body.map(e => {
+            if (e.type in this.table) {
+                return this.table[e.type]!(e);
+            }
+
+            return e;
+        });
+        
+        if (!expr.alternate) return expr
+
+        expr.alternate.body = expr.alternate.body.map(e => {
+            if (e.type in this.table) {
+                return this.table[e.type]!(e);
+            }
+
+            return e;
+        });
+
+        return expr;
     }
 
     private unify() {

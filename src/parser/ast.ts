@@ -86,6 +86,7 @@ export type FunctionParam = {
 export type IfExpression = Expression & {
     type: "IfExpression"
     condition: Expression
+    inferredCondition?: CheckerType | CheckerPlaceholder
     body: Expression[]
     alternate?: IfExpression | ElseExpression
 }
