@@ -39,7 +39,6 @@ export class LLVMHelper {
     }
 
     toString() {
-        this.mod.verify()
         return this.mod.toString();
     }
 }

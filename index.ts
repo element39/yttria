@@ -19,8 +19,6 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-use std/io
-
 fn main() -> int {
     return 5
 }
@@ -73,7 +71,7 @@ for (const [name, mod] of Object.entries(modules)) {
     if (name === "main") await Bun.write("out/inferred.json", JSON.stringify(ist, null, 2))
 
     const infTime = performance.now()
-    console.log(`inferred types in ${(infTime - start).toFixed(3)}ms`)
+    console.log(`   inferred types in ${(infTime - start).toFixed(3)}ms`)
 
     const tc = new TypeChecker(ist)
     const cst = tc.check()
@@ -107,11 +105,20 @@ for (const [name] of Object.entries(modules)) {
     const objPath = path.join("objects", `${name}.o`)
     mkdirSync(path.dirname(objPath), { recursive: true })
     const llPath = path.join("out", `${name}.ll`)
-    Bun.spawnSync({
-        cmd: ["llc", llPath, "-filetype=obj", "-o", objPath],
-        stdout: "inherit",
-        stderr: "inherit",
-    })
+    try {
+        const res = Bun.spawnSync({ cmd: ["llc", llPath, "-filetype=obj", "-o", objPath], stdout: "pipe", stderr: "pipe" })
+        const out = res.stdout ? Buffer.from(res.stdout).toString() : ""
+        const err = res.stderr ? Buffer.from(res.stderr).toString() : ""
+        if (res.exitCode !== 0) {
+            console.error(`llc failed for ${llPath}:\n${out}${err}`)
+            throw new Error(`llc failed for ${llPath}`)
+        }
+        // success: don't print llc output unless needed
+    } catch (e) {
+        // rethrow after printing a helpful message
+        console.error(`failed to run 'llc' on ${llPath}: ${e}`)
+        throw e
+    }
 }
 
 function collectO(dir: string): string[] {
@@ -128,11 +135,24 @@ function collectO(dir: string): string[] {
 }
 const objects = collectO("./objects");
 
-Bun.spawnSync({
-    cmd: ["gcc", ...objects, "-o", "./out/executable.exe"],
-    stdout: "inherit",
-    stderr: "inherit",
-})
+try {
+    const clang = Bun.spawnSync({
+        cmd: ["clang", ...objects, "-o", "./out/executable.exe", "-v"],
+        stdout: "pipe",
+        stderr: "pipe"
+    })
+
+    const out = clang.stdout ? Buffer.from(clang.stdout).toString() : ""
+    const err = clang.stderr ? Buffer.from(clang.stderr).toString() : ""
+
+    if (clang.exitCode !== 0) {
+        console.error(`clang failed:\n${out}${err}`)
+        throw new Error('clang failed')
+    }
+} catch (e) {
+    console.error(`failed to run 'clang': ${e}`)
+    throw e
+}
 
 console.log(`executable output:\n\n${"=".repeat(50)}`)
 

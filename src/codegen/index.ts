@@ -1,6 +1,6 @@
 import { BasicBlock, Func, FunctionType, Linkage, Type, Value } from "../bindings";
 import { ResolvedModule } from "../module/types";
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, SwitchExpression, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration } from "../parser/ast";
 import { CheckerType, CheckerPlaceholder } from "../typing/types";
 import { LLVMHelper } from "./helper";
 
@@ -57,7 +57,8 @@ export class Codegen {
         for (const expr of this.ast.body) {
             this.table[expr.type]?.(expr);
         }
-
+        
+        this.helper.mod.verify();
         return this.helper.toString();
     }
 
@@ -72,19 +73,21 @@ export class Codegen {
         }
 
         const params = expr.params.map(param => {
-            const type = this.getType(param.type) ?? this.types["void"];
+            const typeName = param.paramType.value;
+            const type = this.getType(typeName) ?? this.types["void"];
             if (!type) {
-                throw new Error(`function ${expr.name} has invalid parameter type for ${param.name}`);
+                throw new Error(`function ${expr.name.value} has invalid parameter type for ${param.name.value}`);
             }
-            
-            return type
+            return type;
         });
 
         const fn = this.helper.fn(
             expr.name.value,
             new FunctionType(params, ret, false), // TODO: varargs
             {
-                linkage: expr.modifiers.includes("extern") || expr.modifiers.includes("pub") ? Linkage.External : Linkage.Internal,
+                linkage: (this.name === "main" && expr.name.value === "main")
+                    ? Linkage.External
+                    : (expr.modifiers.includes("extern") || expr.modifiers.includes("pub") ? Linkage.External : Linkage.Internal),
                 extern: expr.modifiers.includes("extern"),
             }
         )
@@ -125,6 +128,10 @@ export class Codegen {
             case "NumberLiteral": {
                 const e = expr as NumberLiteral;
                 return Value.constInt(Type.int32(this.helper.ctx), e.value);
+            }
+            case "StringLiteral": {
+                const e = expr as StringLiteral;
+                return this.helper.mod.addGlobalString(e.value, `${this.alias}_${e.value}`);
             }
         }
 
