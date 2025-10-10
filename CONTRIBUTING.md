@@ -11,6 +11,12 @@ all contributions are welcome, whether it’s code, docs, tests, or ideas.
 
 ## how to contribute
 
+- install bun & llvm-14.0.6
+  - `powershell -c "irm bun.sh/install.ps1 | iex"` (windows)
+  - `curl -fsSL https://bun.sh/install | bash` (macOS/Linux)
+  - `scoop install llvm@14.0.6` (windows)
+  - make sure llvm is in your PATH
+  - make sure llvm has LLVM-C.dll / libLLVM-C.so in its binaries
 - fork the repo and create a new branch for your changes
 - make your changes (keep code clean & readable)
 - run tests and make sure everything passes

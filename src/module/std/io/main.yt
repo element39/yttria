@@ -1,3 +1,0 @@
-pub fn println(text: string) {
-    puts(text)
-}

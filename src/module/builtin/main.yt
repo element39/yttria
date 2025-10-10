@@ -1,1 +1,0 @@
-extern fn strcmp(a: string, b: string) -> int
