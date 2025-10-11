@@ -1,7 +1,8 @@
 import { rmSync } from "fs"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
-import { SemanticAnalyzer } from "./src/semantic"
+import { SemanticAnalyzer } from "./src/semantic/analysis"
+import { TypeChecker } from "./src/semantic/typing"
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -38,9 +39,8 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 fn main() {
-    let y := 5 + 5 * (3 - 2) / 4
-    let z := x + y * 2
-    let x := 10
+    let x := true
+    let y := 3 + x
 }
 `.trim()
 
@@ -62,6 +62,9 @@ console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms,
 
 const sa = new SemanticAnalyzer(ast)
 const analyzed = sa.analyze()
+
+const tc = new TypeChecker(ast)
+tc.check()
 
 await Bun.write("out/semantic.json", JSON.stringify(analyzed, null, 2))
 const semanticTime = performance.now()
