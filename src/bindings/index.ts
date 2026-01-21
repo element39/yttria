@@ -2,7 +2,7 @@ import {
 	LLVMAddFunction,
 	LLVMAddGlobal,
 	LLVMAppendBasicBlockInContext,
-	LLVMArrayType,
+	LLVMArrayType2,
 	LLVMBuildAdd,
 	LLVMBuildAlloca,
 	LLVMBuildBitCast,
@@ -14,7 +14,7 @@ import {
 	LLVMBuildFMul,
 	LLVMBuildFSub,
 	LLVMBuildICmp,
-	LLVMBuildLoad,
+	LLVMBuildLoad2,
 	LLVMBuildMul,
 	LLVMBuildRet,
 	LLVMBuildSDiv,
@@ -23,7 +23,7 @@ import {
 	LLVMBuildUDiv,
 	LLVMConstInt,
 	LLVMConstReal,
-	LLVMConstStringInContext,
+	LLVMConstStringInContext2,
 	LLVMContextCreate,
 	LLVMCreateBuilderInContext,
 	LLVMDeleteBasicBlock,
@@ -40,7 +40,7 @@ import {
 	LLVMInt64TypeInContext,
 	LLVMInt8TypeInContext,
 	LLVMModuleCreateWithNameInContext,
-	LLVMPointerType,
+	LLVMPointerTypeInContext,
 	LLVMPositionBuilderAtEnd,
 	LLVMPrintModuleToString,
 	LLVMSetGlobalConstant,
@@ -96,12 +96,12 @@ private _funcs: Map<string, Func> = new Map();
 		const ctx = this.getContext();
 		const i8 = Type.int8(ctx);
 		const strBytes = Buffer.from(value + "\0");
-		const strConst = LLVMConstStringInContext(ctx.handle, strBytes, strBytes.length, 1);
-		const arrType = LLVMArrayType(i8.handle, strBytes.length);
+		const strConst = LLVMConstStringInContext2(ctx.handle, strBytes, BigInt(strBytes.length), 1);
+		const arrType = LLVMArrayType2(i8.handle, BigInt(strBytes.length));
 		const global = LLVMAddGlobal(this.ptr, arrType, Buffer.from(name + "\0"));
 		LLVMSetInitializer(global, strConst);
 		LLVMSetGlobalConstant(global, true);
-		return new Value(global, Type.pointer(i8));
+		return new Value(global, Type.pointer(ctx));
 	}
 
 	/**
@@ -437,12 +437,13 @@ export class IRBuilder {
 
 	/**
 	 load a value from memory
+	 @param type the type of the value to load
 	 @param ptr the pointer to load from
 	 @param name variable name
 	 @returns the loaded value
 	 */
-	load(ptr: Value, name = "load"): Value {
-		return new Value(LLVMBuildLoad(this.ptr, ptr.handle, Buffer.from(name + "\0")));
+	load(type: Type, ptr: Value, name = "load"): Value {
+		return new Value(LLVMBuildLoad2(this.ptr, type.handle, ptr.handle, Buffer.from(name + "\0")), type);
 	}
 
 	/**
@@ -691,12 +692,12 @@ export class Type {
 	}
 
 	/**
-	 get pointer type
-	 @param elementType type to point to
+	 get pointer type (opaque pointer in LLVM 21)
+	 @param context LLVM context
 	 @param addressSpace address space
 	*/
-	static pointer(elementType: Type, addressSpace = 0): Type {
-        return new Type(LLVMPointerType(elementType.handle, addressSpace), "pointer", undefined, elementType);
+	static pointer(context: Context, addressSpace = 0): Type {
+        return new Type(LLVMPointerTypeInContext(context.handle, addressSpace), "pointer");
     }
 
 	/**

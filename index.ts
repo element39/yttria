@@ -3,6 +3,7 @@ import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { SemanticAnalyzer } from "./src/semantic/analysis"
 import { TypeChecker } from "./src/semantic/typing"
+import { Codegen } from "./src/gen"
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -39,8 +40,9 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 fn main() {
-    let x := true
+    let x: int = 3
     let y := 3 + x
+    return 0
 }
 `.trim()
 
@@ -71,4 +73,20 @@ const semanticTime = performance.now()
 
 console.log(`semantic analysis done in ${(semanticTime - astTime).toFixed(3)}ms`)
 
-console.log(`total time: ${(semanticTime - start).toFixed(3)}ms`)
+const cg = new Codegen("my_module", ast)
+const llvmIr = cg.generate()
+await Bun.write("out/module.ll", llvmIr)
+
+const cgTime = performance.now()
+
+console.log(`total time: ${(cgTime - start).toFixed(3)}ms`)
+
+Bun.write("out/module.ll", llvmIr)
+const clang = Bun.spawn({
+    cmd: ["clang", "-o", "out/program.exe", "out/module.ll"],
+})
+await clang.exited
+
+const exe = Bun.spawn({
+    cmd: ["out/program.exe"],
+})

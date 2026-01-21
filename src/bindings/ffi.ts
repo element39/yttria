@@ -4,8 +4,8 @@ import { platform } from "os";
 const location = platform() === "win32" ? "LLVM-C.dll" : "libLLVM-C.so";
 
 const lib = dlopen(location, {
-	LLVMConstStringInContext: { args: ["ptr", "cstring", "uint32_t", "bool"], returns: "ptr" },
-	LLVMArrayType: { args: ["ptr", "uint32_t"], returns: "ptr" },
+	LLVMConstStringInContext2: { args: ["ptr", "cstring", "uint64_t", "bool"], returns: "ptr" },
+	LLVMArrayType2: { args: ["ptr", "uint64_t"], returns: "ptr" },
 	LLVMAddGlobal: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
 	LLVMSetInitializer: { args: ["ptr", "ptr"], returns: "void" },
 	LLVMSetGlobalConstant: { args: ["ptr", "bool"], returns: "void" },
@@ -31,7 +31,7 @@ const lib = dlopen(location, {
 	LLVMDoubleTypeInContext: { args: ["ptr"], returns: "ptr" },
 
 	LLVMVoidTypeInContext: { args: ["ptr"], returns: "ptr" },
-	LLVMPointerType: { args: ["ptr", "uint32_t"], returns: "ptr" },
+	LLVMPointerTypeInContext: { args: ["ptr", "uint32_t"], returns: "ptr" },
 
 	// functions & blocks
 	LLVMFunctionType: { args: ["ptr", "ptr", "uint32_t", "bool"], returns: "ptr" },
@@ -59,7 +59,7 @@ const lib = dlopen(location, {
 	// memory
 	LLVMBuildAlloca: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
 	LLVMBuildStore: { args: ["ptr", "ptr", "ptr"], returns: "ptr" },
-	LLVMBuildLoad: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
+	LLVMBuildLoad2: { args: ["ptr", "ptr", "ptr", "cstring"], returns: "ptr" },
 
 	// constants
 	LLVMConstInt: { args: ["ptr", "uint64_t", "bool"], returns: "ptr" },
@@ -90,7 +90,7 @@ export const {
 	LLVMFloatTypeInContext,
 	LLVMDoubleTypeInContext,
 	LLVMVoidTypeInContext,
-	LLVMPointerType,
+	LLVMPointerTypeInContext,
 
 	LLVMFunctionType,
 	LLVMAddFunction,
@@ -123,13 +123,13 @@ export const {
 	LLVMGetIntTypeWidth,
 	LLVMBuildAlloca,
 	LLVMBuildStore,
-	LLVMBuildLoad,
+	LLVMBuildLoad2,
 	LLVMGetNamedFunction,
 	LLVMBuildCall2,
 	LLVMBuildICmp,
 	LLVMGetInsertBlock,
-	LLVMConstStringInContext,
-	LLVMArrayType,
+	LLVMConstStringInContext2,
+	LLVMArrayType2,
 	LLVMAddGlobal,
 	LLVMSetInitializer,
 	LLVMSetGlobalConstant,

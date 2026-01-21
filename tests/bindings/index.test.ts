@@ -11,11 +11,11 @@ describe('llvm-bun', () => {
 		const builder = new IRBuilder(ctx);
 		builder.insertInto(entry);
 		const i8 = Type.int8(ctx);
-		const ptrType = Type.pointer(i8);
+		const ptrType = Type.pointer(ctx);
 		const ptr = builder.alloca(i8, 'ptr');
 		// Bitcast to another pointer type (e.g., i32*)
 		const i32 = Type.int32(ctx);
-		const ptrI32 = Type.pointer(i32);
+		const ptrI32 = Type.pointer(ctx);
 		const casted = builder.bitcast(ptr, ptrI32, 'casted');
 		expect(casted.handle).toBeTruthy();
 		expect(casted.getType().isPointer()).toBe(true);
@@ -66,7 +66,7 @@ describe('llvm-bun', () => {
 	it('creates pointer types', () => {
 		const ctx = new Context()
 		const i8 = Type.int8(ctx)
-		const ptr = Type.pointer(i8)
+		const ptr = Type.pointer(ctx)
 		expect(ptr.isPointer()).toBe(true)
 	})
 
@@ -115,7 +115,7 @@ describe('llvm-bun', () => {
 		const ptr = builder.alloca(i32, 'x')
 		const val = Value.constInt(i32, 123)
 		builder.store(val, ptr)
-		const loaded = builder.load(ptr)
+		const loaded = builder.load(i32, ptr)
 		expect(loaded.handle).toBeTruthy()
 	})
 	it('builds integer and float arithmetic', () => {
