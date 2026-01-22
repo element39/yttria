@@ -1,5 +1,5 @@
 import { Func, FunctionType, Module, Type, Value } from "../bindings";
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, NumberLiteral, ProgramExpression, ReturnExpression } from "../parser/ast";
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -9,8 +9,11 @@ export class Codegen {
     private table: { [key in ExpressionType]?: (e: any) => Func | Value | void } = {
         FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
-        BinaryExpression: this.getBinaryExpression.bind(this),
+        BinaryExpression: this.genBinaryExpression.bind(this),
+        VariableDeclaration: this.genVariableDeclaration.bind(this)
     };
+
+    private variables: { [name: string]: { ptr: Value; type: Type } } = {};
 
     constructor(moduleName: string, ast: ProgramExpression) {
         this.h = new LLVMHelper(moduleName);
@@ -52,7 +55,7 @@ export class Codegen {
         )
     }
 
-    private getBinaryExpression(b: BinaryExpression): Value | void {
+    private genBinaryExpression(b: BinaryExpression): Value | void {
         const left = this.getValueFromExpression(b.left);
         const right = this.getValueFromExpression(b.right);
 
@@ -78,6 +81,17 @@ export class Codegen {
         return val;
     }
 
+    private genVariableDeclaration(v: VariableDeclaration): void {
+        const val = this.getValueFromExpression(v.value);
+        if (!val) {
+            throw new Error(`Unsupported variable declaration value type: ${v.value.type}`);
+        }
+
+        const ptr = this.h.alloca(val.getType(), v.name.value)
+        this.h.store(val, ptr);
+        this.variables[v.name.value] = { ptr, type: val.getType() };
+    }
+
     private getTypeFromExpression(e: Expression): Type | null {
         switch (e.type) {
             case "NumberLiteral":
@@ -96,7 +110,16 @@ export class Codegen {
 
             case "BinaryExpression": {
                 const e = expr as BinaryExpression;
-                return this.getBinaryExpression(e) as Value;
+                return this.genBinaryExpression(e) as Value;
+            }
+
+            case "Identifier": {
+                const e = expr as Identifier;
+                const obj = this.variables[e.value];
+                if (!obj) {
+                    throw new Error(`Undefined variable: ${e.value}`);
+                }
+                return this.h.load(obj.type, obj.ptr, e.value);
             }
         }
 

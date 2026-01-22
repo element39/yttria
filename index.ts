@@ -40,7 +40,10 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 fn main() {
-    return 10 / 2 + 3 * 4 - 5
+    let a := 10
+    let b := 20
+    let c := a + b
+    return a + b * c / 2 - 5
 }
 `.trim()
 

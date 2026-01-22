@@ -1,4 +1,4 @@
-import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module, Value } from "../bindings";
+import VM, { Context, Func, FunctionType, IRBuilder, Linkage, Module, Type, Value } from "../bindings";
 
 export class LLVMHelper {
     public name: string;
@@ -56,6 +56,18 @@ export class LLVMHelper {
         }
 
         return this.builder.sdiv(left, right);
+    }
+
+    public alloca(type: Type, name?: string): Value {
+        return this.builder.alloca(type, name);
+    }
+
+    public store(value: Value, ptr: Value): void {
+        this.builder.store(value, ptr);
+    }
+
+    public load(type: Type, ptr: Value, name?: string): Value {
+        return this.builder.load(type, ptr, name);
     }
 
     toString() {
