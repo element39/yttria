@@ -38,6 +38,26 @@ export class LLVMHelper {
         this.builder.ret(value);
     }
 
+    public add(left: Value, right: Value): Value {
+        return this.builder.add(left, right);
+    }
+
+    public sub(left: Value, right: Value): Value {
+        return this.builder.sub(left, right);
+    }
+
+    public mul(left: Value, right: Value): Value {
+        return this.builder.mul(left, right);
+    }
+
+    public div(left: Value, right: Value): Value {
+        if (left.getType().isFloat() || right.getType().isFloat()) {
+            return this.builder.fdiv(left, right);
+        }
+
+        return this.builder.sdiv(left, right);
+    }
+
     toString() {
         this.mod.verify()
         return this.mod.toString();

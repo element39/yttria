@@ -40,9 +40,7 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 fn main() {
-    let x: int = 3
-    let y := 3 + x
-    return 0
+    return 10 / 2 + 3 * 4 - 5
 }
 `.trim()
 
@@ -80,6 +78,7 @@ await Bun.write("out/module.ll", llvmIr)
 const cgTime = performance.now()
 
 console.log(`total time: ${(cgTime - start).toFixed(3)}ms`)
+console.log("")
 
 Bun.write("out/module.ll", llvmIr)
 const clang = Bun.spawn({
@@ -90,3 +89,7 @@ await clang.exited
 const exe = Bun.spawn({
     cmd: ["out/program.exe"],
 })
+
+await exe.exited
+
+console.log(`program exited with code ${exe.exitCode}`)
