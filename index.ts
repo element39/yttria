@@ -55,7 +55,7 @@ const t = l.lex()
 const lexerTime = performance.now()
 await Bun.write("out/tok.json", JSON.stringify(t, null, 2))
 
-console.log(`lexed ${t.length} tokens in ${(lexerTime - start).toFixed(3)}ms`)
+console.log(`lexed ${program.length} characters in ${(lexerTime - start).toFixed(3)}ms into ${t.length} tokens`)
 
 const p = new Parser(t)
 const ast = p.parse()
@@ -82,9 +82,6 @@ const cg = new Codegen("my_module", ast)
 const llvmIr = cg.generate()
 await Bun.write("out/module.ll", llvmIr)
 
-const cgTime = performance.now()
-
-console.log(`total time: ${(cgTime - start).toFixed(3)}ms`)
 console.log("")
 
 Bun.write("out/module.ll", llvmIr)
@@ -92,6 +89,13 @@ const clang = Bun.spawn({
     cmd: ["clang", "-o", "out/program.exe", "out/module.ll"],
 })
 await clang.exited
+
+const cgTime = performance.now()
+
+
+console.log(`codegen done in ${(cgTime - semanticTime).toFixed(3)}ms`)
+console.log(`total time: ${(cgTime - start).toFixed(3)}ms`)
+console.log("")
 
 const exe = Bun.spawn({
     cmd: ["out/program.exe"],
