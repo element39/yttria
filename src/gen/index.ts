@@ -10,10 +10,10 @@ export class Codegen {
         FunctionDeclaration: this.genFunctionDeclaration.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
         BinaryExpression: this.genBinaryExpression.bind(this),
-        VariableDeclaration: this.genVariableDeclaration.bind(this)
+        VariableDeclaration: this.genVariableDeclaration.bind(this) 
     };
 
-    private variables: { [name: string]: { ptr: Value; type: Type } } = {};
+    private variables: { [name: string]: { ptr: Value; type: Type; value?: Value } } = {};
 
     constructor(moduleName: string, ast: ProgramExpression) {
         this.h = new LLVMHelper(moduleName);
@@ -89,7 +89,7 @@ export class Codegen {
 
         const ptr = this.h.alloca(val.getType(), v.name.value)
         this.h.store(val, ptr);
-        this.variables[v.name.value] = { ptr, type: val.getType() };
+        this.variables[v.name.value] = { ptr, type: val.getType(), value: val };
     }
 
     private getTypeFromExpression(e: Expression): Type | null {
@@ -119,6 +119,8 @@ export class Codegen {
                 if (!obj) {
                     throw new Error(`Undefined variable: ${e.value}`);
                 }
+                // if cached 
+                if (obj.value) return obj.value;
                 return this.h.load(obj.type, obj.ptr, e.value);
             }
         }

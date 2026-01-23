@@ -85,7 +85,7 @@ console.log("")
 
 Bun.write("out/module.ll", llvmIr)
 const clang = Bun.spawn({
-    cmd: ["clang", "-o", "out/program.exe", "out/module.ll"],
+    cmd: ["clang", "-o", "out/program.exe", "out/module.ll", "-O2"],
 })
 await clang.exited
 
