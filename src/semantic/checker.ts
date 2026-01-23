@@ -1,4 +1,4 @@
-import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../../parser/ast"
+import { BinaryExpression, Expression, ExpressionType, FunctionDeclaration, Identifier, NumberLiteral, ProgramExpression, ReturnExpression, VariableDeclaration } from "../parser/ast"
 import { similarType, Type } from "./types"
 
 export class TypeEnvironment {

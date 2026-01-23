@@ -2,8 +2,9 @@ import { rmSync } from "fs"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { SemanticAnalyzer } from "./src/semantic/analysis"
-import { TypeChecker } from "./src/semantic/typing"
+import { TypeChecker } from "./src/semantic/checker"
 import { Codegen } from "./src/gen"
+import { TypeInferrer } from "./src/semantic/inferrer"
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -66,10 +67,13 @@ console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms,
 const sa = new SemanticAnalyzer(ast)
 const analyzed = sa.analyze()
 
-const tc = new TypeChecker(ast)
-tc.check()
+const ti = new TypeInferrer(analyzed)
+const inferred = ti.infer()
 
-await Bun.write("out/semantic.json", JSON.stringify(analyzed, null, 2))
+const tc = new TypeChecker(inferred)
+const checked = tc.check()
+
+await Bun.write("out/semantic.json", JSON.stringify(checked, null, 2))
 const semanticTime = performance.now()
 
 console.log(`semantic analysis done in ${(semanticTime - astTime).toFixed(3)}ms`)
@@ -85,7 +89,7 @@ console.log("")
 
 Bun.write("out/module.ll", llvmIr)
 const clang = Bun.spawn({
-    cmd: ["clang", "-o", "out/program.exe", "out/module.ll", "-O2"],
+    cmd: ["clang", "-o", "out/program.exe", "out/module.ll"],
 })
 await clang.exited
 

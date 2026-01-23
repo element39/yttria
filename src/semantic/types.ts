@@ -3,6 +3,7 @@ export type TypeKind =
   | "float"
   | "bool"
   | "string"
+  | "placeholder"
 
 export type Type = {
   kind: TypeKind
@@ -23,6 +24,11 @@ export type BoolType = Type & {
 export type StringType = Type & {
   kind: "string"
   value: string
+}
+
+export type PlaceholderType = Type & {
+  kind: "placeholder"
+  id: string
 }
 
 export const sameType = (a?: Type, b?: Type): boolean => {

@@ -1,4 +1,6 @@
+import { Type } from "../semantic/types" // oops
 import { Modifier } from "../lexer/token"
+import { PlaceholderType } from "../semantic/types"
 //import { CheckerPlaceholder, CheckerType } from "../typing/types"
 
 export type Expression = {
@@ -66,7 +68,7 @@ export type FunctionDeclaration = Expression & {
     name: Identifier
     params: FunctionParam[]
     returnType?: Identifier
-    // resolvedReturnType?: CheckerType | CheckerPlaceholder
+    resolvedReturnType?: Type | PlaceholderType
     body: Expression[]
     modifiers: Modifier[]
 }
@@ -74,7 +76,7 @@ export type FunctionDeclaration = Expression & {
 export type FunctionCall = Expression & {
     type: "FunctionCall"
     callee: Identifier// | MemberAccess
-    // inferredCallee?: CheckerType | CheckerPlaceholder
+    inferredCallee?: Type | PlaceholderType
     args: Expression[]
 }
 
@@ -87,7 +89,7 @@ export type FunctionParam = {
 export type IfExpression = Expression & {
     type: "IfExpression"
     condition: Expression
-    // inferredCondition?: CheckerType | CheckerPlaceholder
+    inferredCondition?: Type | PlaceholderType
     body: Expression[]
     alternate?: IfExpression | ElseExpression
 }
@@ -100,21 +102,21 @@ export type ElseExpression = Expression & {
 export type WhileExpression = Expression & {
     type: "WhileExpression"
     condition: Expression
-    // inferredCondition?: CheckerType | CheckerPlaceholder
+    inferredCondition?: Type | PlaceholderType
     body: Expression[]
 }
 
 export type SwitchExpression = Expression & {
     type: "SwitchExpression"
     value: Expression
-    // inferredValue?: CheckerType | CheckerPlaceholder
+    inferredValue?: Type | PlaceholderType
     cases: CaseExpression[]
 }
 
 export type CaseExpression = Expression & {
     type: "CaseExpression"
     value: Expression | "default"
-    // inferredValue?: CheckerType | CheckerPlaceholder
+    inferredValue?: Type | PlaceholderType
     body: Expression[]
 }
 
@@ -128,7 +130,7 @@ export type VariableDeclaration = Expression & {
     name: Identifier
     value: Expression
     typeAnnotation?: Identifier
-    // resolvedType?: CheckerType | CheckerPlaceholder
+    resolvedType?: Type | PlaceholderType
     mutable: boolean
 }
 
