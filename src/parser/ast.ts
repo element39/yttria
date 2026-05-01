@@ -83,7 +83,7 @@ export type FunctionCall = Expression & {
 export type FunctionParam = {
     type: "FunctionParam"
     name: Identifier
-    paramType: Identifier
+    paramType: Identifier // declared type annotation
 }
 
 export type IfExpression = Expression & {

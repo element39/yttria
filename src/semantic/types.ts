@@ -31,6 +31,11 @@ export type PlaceholderType = Type & {
   id: string
 }
 
+let pid = 0
+export const newPlaceholderType = (): PlaceholderType => {
+  return { kind: "placeholder", id: `${pid++}` }
+}
+
 export const sameType = (a?: Type, b?: Type): boolean => {
   if (!a || !b) return false;
 
@@ -43,6 +48,8 @@ export const similarType = (a?: Type, b?: Type): boolean => {
   
   const groups: TypeKind[][] = [
     ["int", "float"],
+    ["string"],
+    ["bool"]
   ];
 
   for (const group of groups) {

@@ -47,6 +47,15 @@ export class SemanticAnalyzer {
         if (this.symbols.has(name)) {
             throw new Error(`function ${name} is already declared`)
         }
+
+        for (const param of f.params) {
+            const name = param.name.value
+            if (this.symbols.has(name)) {
+                throw new Error(`parameter ${name} is already declared in function scope ${f.name.value}`)
+            }
+            
+            this.symbols.set(name, { type: "variable", name: param.name, value: param })
+        }
         
         this.symbols.set(name, symbol)
         for (const expr of f.body) {
