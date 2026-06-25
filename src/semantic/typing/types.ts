@@ -1,49 +1,30 @@
 export type TypeKind =
-  | "int"
-  | "float"
-  | "bool"
-  | "string"
+    | "int"
+    | "float"
 
-export type Type = {
-  kind: TypeKind
+export type TypeValue = {
+    kind: TypeKind
 }
 
-export type IntType = Type & {
-  kind: "int"
+export type IntType = TypeValue & {
+    kind: "int"
+    size: 8 | 16 | 32 | 64
 }
 
-export type FloatType = Type & {
-  kind: "float"
+export type FloatType = TypeValue & {
+    kind: "float"
 }
 
-export type BoolType = Type & {
-  kind: "bool"
+export type TypeSlot = {
+    id: number
+    type?: TypeValue
+    links: TypeSlot[]
 }
 
-export type StringType = Type & {
-  kind: "string"
-  value: string
-}
-
-export const sameType = (a?: Type, b?: Type): boolean => {
-  if (!a || !b) return false;
-
-  if (a.kind !== b.kind) return false;
-  return true;
-}
-
-export const similarType = (a?: Type, b?: Type): boolean => {
-  if (!a || !b) return false;
-  
-  const groups: TypeKind[][] = [
-    ["int", "float"],
-  ];
-
-  for (const group of groups) {
-    if (group.includes(a.kind) && group.includes(b.kind)) {
-      return true;
+let slotId = 0
+export const createEmptySlot = (): TypeSlot => {
+    return {
+        id: slotId++,
+        links: []
     }
-  }
-  
-  return sameType(a, b);
 }
