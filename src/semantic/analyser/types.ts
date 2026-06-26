@@ -18,13 +18,13 @@ export type FloatType = TypeValue & {
 export type TypeSlot = {
     id: number
     type?: TypeValue
-    links: TypeSlot[]
+    // sources: TypeSlot[]
 }
 
 let slotId = 0
 export const createEmptySlot = (): TypeSlot => {
     return {
         id: slotId++,
-        links: []
+        // sources: []
     }
 }

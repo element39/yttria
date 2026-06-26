@@ -39,7 +39,9 @@ i16 // 16-bit signed integer
 i32 // 32-bit signed integer
 i64 // 64-bit signed integer
 
-float // 64-bit floating point number
+float // 64-bit floating point number, hard alias to f64
+f32 // 32-bit floating point number
+f64 // 64-bit floating point number
 
 bool // boolean, hard alias to i1
 

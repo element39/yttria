@@ -1,8 +1,8 @@
 import { rmSync } from "fs"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
-import { SemanticAnalyser } from "./src/semantic/typing"
-import { SemanticResolver } from "./src/semantic/resolver"
+import { SemanticAnalyser } from "./src/semantic/analyser"
+import { TypeResolver } from "./src/semantic/typing/resolver"
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -39,9 +39,10 @@ rmSync("./out", { recursive: true, force: true })
 
 const program = `
 fn main() {
-    let x := 5
+    let x: int = 5
     let y := x + 2
     let z := x + y
+    let a: i16 = 10
 }
 `.trim()
 
@@ -66,10 +67,10 @@ const analyzed = sa.analyse()
 
 await Bun.write("out/analyzed.json", JSON.stringify(analyzed, null, 2))
 
-const sr = new SemanticResolver(analyzed)
-const resolved = sr.resolve()
+const tr = new TypeResolver(analyzed)
+tr.resolve()
 
-await Bun.write("out/resolved.json", JSON.stringify(resolved, null, 2))
+await Bun.write("out/resolved.json", JSON.stringify(analyzed, null, 2))
 
 const semanticTime = performance.now()
 
