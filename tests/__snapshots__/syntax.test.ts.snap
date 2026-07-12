@@ -1,0 +1,1395 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`tokens and AST for: 01.yt 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "mutable": true,
+        "name": {
+          "type": "Identifier",
+          "value": "a",
+        },
+        "type": "VariableDeclaration",
+        "value": {
+          "type": "NumberLiteral",
+          "value": 5,
+        },
+      },
+      {
+        "mutable": true,
+        "name": {
+          "type": "Identifier",
+          "value": "x",
+        },
+        "type": "VariableDeclaration",
+        "value": {
+          "left": {
+            "type": "Identifier",
+            "value": "a",
+          },
+          "operator": "*",
+          "right": {
+            "type": "NumberLiteral",
+            "value": 2,
+          },
+          "type": "BinaryExpression",
+        },
+      },
+      {
+        "mutable": true,
+        "name": {
+          "type": "Identifier",
+          "value": "y",
+        },
+        "type": "VariableDeclaration",
+        "value": {
+          "left": {
+            "type": "Identifier",
+            "value": "x",
+          },
+          "operator": "+",
+          "right": {
+            "type": "Identifier",
+            "value": "a",
+          },
+          "type": "BinaryExpression",
+        },
+      },
+    ],
+    "type": "Program",
+  },
+  "tokens": [
+    {
+      "literal": "let",
+      "type": "Keyword",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":=",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "5",
+      "type": "Number",
+    },
+    {
+      "literal": "let",
+      "type": "Keyword",
+    },
+    {
+      "literal": "x",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":=",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": "*",
+      "type": "Operator",
+    },
+    {
+      "literal": "2",
+      "type": "Number",
+    },
+    {
+      "literal": "let",
+      "type": "Keyword",
+    },
+    {
+      "literal": "y",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":=",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "x",
+      "type": "Identifier",
+    },
+    {
+      "literal": "+",
+      "type": "Operator",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": "",
+      "type": "EOF",
+    },
+  ],
+}
+`;
+
+exports[`tokens and AST for: 02.yt 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "type": "CommentExpression",
+        "value": 
+"yttria
+    a blazingly fast*, universal* and easy-to-use* programming language
+    for anything you can imagine*
+    * = not true (yet)
+
+    this file is a complete (albeit meaningless) program
+    that demonstrates the syntax of yttria
+    it is not meant to be run, but rather to be read
+    it is a work in progress, so expect changes in the future"
+,
+      },
+      {
+        "body": [
+          {
+            "mutable": false,
+            "name": {
+              "type": "Identifier",
+              "value": "a",
+            },
+            "type": "VariableDeclaration",
+            "value": {
+              "type": "NumberLiteral",
+              "value": 1,
+            },
+          },
+          {
+            "mutable": false,
+            "name": {
+              "type": "Identifier",
+              "value": "b",
+            },
+            "type": "VariableDeclaration",
+            "typeAnnotation": {
+              "type": "Identifier",
+              "value": "int",
+            },
+            "value": {
+              "type": "NumberLiteral",
+              "value": 2,
+            },
+          },
+          {
+            "mutable": true,
+            "name": {
+              "type": "Identifier",
+              "value": "c",
+            },
+            "type": "VariableDeclaration",
+            "value": {
+              "type": "NumberLiteral",
+              "value": 3,
+            },
+          },
+          {
+            "mutable": true,
+            "name": {
+              "type": "Identifier",
+              "value": "d",
+            },
+            "type": "VariableDeclaration",
+            "typeAnnotation": {
+              "type": "Identifier",
+              "value": "float",
+            },
+            "value": {
+              "type": "NumberLiteral",
+              "value": 4.5,
+            },
+          },
+          {
+            "type": "Identifier",
+            "value": "try",
+          },
+          {
+            "args": [
+              {
+                "type": "Identifier",
+                "value": "x",
+              },
+            ],
+            "callee": {
+              "type": "Identifier",
+              "value": "foo",
+            },
+            "type": "FunctionCall",
+          },
+          {
+            "args": [
+              {
+                "type": "Identifier",
+                "value": "e",
+              },
+            ],
+            "callee": {
+              "type": "Identifier",
+              "value": "catch",
+            },
+            "type": "FunctionCall",
+          },
+          {
+            "args": [
+              {
+                "type": "Identifier",
+                "value": "w",
+              },
+            ],
+            "callee": {
+              "type": "Identifier",
+              "value": "bar",
+            },
+            "type": "FunctionCall",
+          },
+          {
+            "type": "Identifier",
+            "value": "finally",
+          },
+          {
+            "args": [
+              {
+                "type": "Identifier",
+                "value": "c",
+              },
+            ],
+            "callee": {
+              "type": "Identifier",
+              "value": "quux",
+            },
+            "type": "FunctionCall",
+          },
+          {
+            "args": [
+              {
+                "type": "Identifier",
+                "value": "MsgSuccess",
+              },
+            ],
+            "callee": {
+              "object": {
+                "type": "Identifier",
+                "value": "io",
+              },
+              "property": {
+                "type": "Identifier",
+                "value": "println",
+              },
+              "type": "MemberAccess",
+            },
+            "type": "FunctionCall",
+          },
+          {
+            "mutable": false,
+            "name": {
+              "type": "Identifier",
+              "value": "numbers",
+            },
+            "type": "VariableDeclaration",
+            "typeAnnotation": {
+              "type": "Identifier",
+              "value": "int",
+            },
+            "value": {
+              "type": "NumberLiteral",
+              "value": 34,
+            },
+          },
+          {
+            "alternate": {
+              "alternate": {
+                "body": [
+                  {
+                    "args": [
+                      {
+                        "type": "NumberLiteral",
+                        "value": 3,
+                      },
+                    ],
+                    "callee": {
+                      "object": {
+                        "type": "Identifier",
+                        "value": "io",
+                      },
+                      "property": {
+                        "type": "Identifier",
+                        "value": "println",
+                      },
+                      "type": "MemberAccess",
+                    },
+                    "type": "FunctionCall",
+                  },
+                ],
+                "type": "ElseExpression",
+              },
+              "body": [
+                {
+                  "args": [
+                    {
+                      "type": "NumberLiteral",
+                      "value": 2,
+                    },
+                  ],
+                  "callee": {
+                    "object": {
+                      "type": "Identifier",
+                      "value": "io",
+                    },
+                    "property": {
+                      "type": "Identifier",
+                      "value": "println",
+                    },
+                    "type": "MemberAccess",
+                  },
+                  "type": "FunctionCall",
+                },
+              ],
+              "condition": {
+                "left": {
+                  "type": "Identifier",
+                  "value": "a",
+                },
+                "operator": ">",
+                "right": {
+                  "type": "Identifier",
+                  "value": "b",
+                },
+                "type": "BinaryExpression",
+              },
+              "type": "IfExpression",
+            },
+            "body": [
+              {
+                "args": [
+                  {
+                    "type": "NumberLiteral",
+                    "value": 1,
+                  },
+                ],
+                "callee": {
+                  "object": {
+                    "type": "Identifier",
+                    "value": "io",
+                  },
+                  "property": {
+                    "type": "Identifier",
+                    "value": "println",
+                  },
+                  "type": "MemberAccess",
+                },
+                "type": "FunctionCall",
+              },
+            ],
+            "condition": {
+              "left": {
+                "type": "Identifier",
+                "value": "a",
+              },
+              "operator": "<",
+              "right": {
+                "type": "Identifier",
+                "value": "b",
+              },
+              "type": "BinaryExpression",
+            },
+            "type": "IfExpression",
+          },
+          {
+            "cases": [
+              {
+                "body": [
+                  {
+                    "args": [
+                      {
+                        "object": {
+                          "object": {
+                            "type": "Identifier",
+                            "value": "m",
+                          },
+                          "property": {
+                            "type": "Identifier",
+                            "value": "x",
+                          },
+                          "type": "MemberAccess",
+                        },
+                        "property": {
+                          "type": "Identifier",
+                          "value": "y",
+                        },
+                        "type": "MemberAccess",
+                      },
+                    ],
+                    "callee": {
+                      "object": {
+                        "type": "Identifier",
+                        "value": "io",
+                      },
+                      "property": {
+                        "type": "Identifier",
+                        "value": "println",
+                      },
+                      "type": "MemberAccess",
+                    },
+                    "type": "FunctionCall",
+                  },
+                ],
+                "type": "CaseExpression",
+                "value": {
+                  "type": "NumberLiteral",
+                  "value": 1,
+                },
+              },
+              {
+                "body": [
+                  {
+                    "args": [
+                      {
+                        "object": {
+                          "object": {
+                            "type": "Identifier",
+                            "value": "c",
+                          },
+                          "property": {
+                            "type": "Identifier",
+                            "value": "t",
+                          },
+                          "type": "MemberAccess",
+                        },
+                        "property": {
+                          "type": "Identifier",
+                          "value": "p",
+                        },
+                        "type": "MemberAccess",
+                      },
+                    ],
+                    "callee": {
+                      "object": {
+                        "type": "Identifier",
+                        "value": "io",
+                      },
+                      "property": {
+                        "type": "Identifier",
+                        "value": "println",
+                      },
+                      "type": "MemberAccess",
+                    },
+                    "type": "FunctionCall",
+                  },
+                ],
+                "type": "CaseExpression",
+                "value": {
+                  "type": "NumberLiteral",
+                  "value": 2,
+                },
+              },
+              {
+                "body": [
+                  {
+                    "args": [
+                      {
+                        "object": {
+                          "object": {
+                            "type": "Identifier",
+                            "value": "f",
+                          },
+                          "property": {
+                            "type": "Identifier",
+                            "value": "l",
+                          },
+                          "type": "MemberAccess",
+                        },
+                        "property": {
+                          "type": "Identifier",
+                          "value": "e",
+                        },
+                        "type": "MemberAccess",
+                      },
+                    ],
+                    "callee": {
+                      "object": {
+                        "type": "Identifier",
+                        "value": "io",
+                      },
+                      "property": {
+                        "type": "Identifier",
+                        "value": "println",
+                      },
+                      "type": "MemberAccess",
+                    },
+                    "type": "FunctionCall",
+                  },
+                ],
+                "type": "CaseExpression",
+                "value": "default",
+              },
+            ],
+            "type": "SwitchExpression",
+            "value": {
+              "type": "Identifier",
+              "value": "c",
+            },
+          },
+        ],
+        "modifiers": [],
+        "name": {
+          "type": "Identifier",
+          "value": "main",
+        },
+        "params": [],
+        "returnType": {
+          "type": "Identifier",
+          "value": "void",
+        },
+        "type": "FunctionDeclaration",
+      },
+      {
+        "body": [
+          {
+            "alternate": undefined,
+            "body": [
+              {
+                "type": "ReturnExpression",
+                "value": {
+                  "type": "Identifier",
+                  "value": "n",
+                },
+              },
+            ],
+            "condition": {
+              "left": {
+                "type": "Identifier",
+                "value": "n",
+              },
+              "operator": "<=",
+              "right": {
+                "type": "NumberLiteral",
+                "value": 1,
+              },
+              "type": "BinaryExpression",
+            },
+            "type": "IfExpression",
+          },
+          {
+            "type": "ReturnExpression",
+            "value": {
+              "left": {
+                "args": [
+                  {
+                    "left": {
+                      "type": "Identifier",
+                      "value": "n",
+                    },
+                    "operator": "-",
+                    "right": {
+                      "type": "NumberLiteral",
+                      "value": 1,
+                    },
+                    "type": "BinaryExpression",
+                  },
+                ],
+                "callee": {
+                  "type": "Identifier",
+                  "value": "fib",
+                },
+                "type": "FunctionCall",
+              },
+              "operator": "+",
+              "right": {
+                "args": [
+                  {
+                    "left": {
+                      "type": "Identifier",
+                      "value": "n",
+                    },
+                    "operator": "-",
+                    "right": {
+                      "type": "NumberLiteral",
+                      "value": 2,
+                    },
+                    "type": "BinaryExpression",
+                  },
+                ],
+                "callee": {
+                  "type": "Identifier",
+                  "value": "fib",
+                },
+                "type": "FunctionCall",
+              },
+              "type": "BinaryExpression",
+            },
+          },
+        ],
+        "modifiers": [],
+        "name": {
+          "type": "Identifier",
+          "value": "fib",
+        },
+        "params": [
+          {
+            "name": {
+              "type": "Identifier",
+              "value": "n",
+            },
+            "paramType": {
+              "type": "Identifier",
+              "value": "int",
+            },
+            "type": "FunctionParam",
+          },
+        ],
+        "returnType": {
+          "type": "Identifier",
+          "value": "int",
+        },
+        "type": "FunctionDeclaration",
+      },
+    ],
+    "type": "Program",
+  },
+  "tokens": [
+    {
+      "literal": 
+"yttria
+    a blazingly fast*, universal* and easy-to-use* programming language
+    for anything you can imagine*
+    * = not true (yet)
+
+    this file is a complete (albeit meaningless) program
+    that demonstrates the syntax of yttria
+    it is not meant to be run, but rather to be read
+    it is a work in progress, so expect changes in the future"
+,
+      "type": "Comment",
+    },
+    {
+      "literal": "fn",
+      "type": "Keyword",
+    },
+    {
+      "literal": "main",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "->",
+      "type": "Operator",
+    },
+    {
+      "literal": "void",
+      "type": "Identifier",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "const",
+      "type": "Keyword",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":=",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "1",
+      "type": "Number",
+    },
+    {
+      "literal": "const",
+      "type": "Keyword",
+    },
+    {
+      "literal": "b",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "int",
+      "type": "Identifier",
+    },
+    {
+      "literal": "=",
+      "type": "Operator",
+    },
+    {
+      "literal": "2",
+      "type": "Number",
+    },
+    {
+      "literal": "let",
+      "type": "Keyword",
+    },
+    {
+      "literal": "c",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":=",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "3",
+      "type": "Number",
+    },
+    {
+      "literal": "let",
+      "type": "Keyword",
+    },
+    {
+      "literal": "d",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "float",
+      "type": "Identifier",
+    },
+    {
+      "literal": "=",
+      "type": "Operator",
+    },
+    {
+      "literal": "4.5",
+      "type": "Number",
+    },
+    {
+      "literal": "try",
+      "type": "Identifier",
+    },
+    {
+      "literal": "foo",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "x",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "catch",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "e",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "bar",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "w",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "finally",
+      "type": "Identifier",
+    },
+    {
+      "literal": "quux",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "c",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "MsgSuccess",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "const",
+      "type": "Keyword",
+    },
+    {
+      "literal": "numbers",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "int",
+      "type": "Identifier",
+    },
+    {
+      "literal": "=",
+      "type": "Operator",
+    },
+    {
+      "literal": "34",
+      "type": "Number",
+    },
+    {
+      "literal": "if",
+      "type": "Keyword",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": "<",
+      "type": "Operator",
+    },
+    {
+      "literal": "b",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "1",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "else",
+      "type": "Keyword",
+    },
+    {
+      "literal": "if",
+      "type": "Keyword",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "a",
+      "type": "Identifier",
+    },
+    {
+      "literal": ">",
+      "type": "Operator",
+    },
+    {
+      "literal": "b",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "2",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "else",
+      "type": "Keyword",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "3",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "switch",
+      "type": "Keyword",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "c",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "1",
+      "type": "Number",
+    },
+    {
+      "literal": "->",
+      "type": "Operator",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "m",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "x",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "y",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "2",
+      "type": "Number",
+    },
+    {
+      "literal": "->",
+      "type": "Operator",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "c",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "t",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "p",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "default",
+      "type": "Keyword",
+    },
+    {
+      "literal": "->",
+      "type": "Operator",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "io",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "println",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "f",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "l",
+      "type": "Identifier",
+    },
+    {
+      "literal": ".",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "e",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "fn",
+      "type": "Keyword",
+    },
+    {
+      "literal": "fib",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "n",
+      "type": "Identifier",
+    },
+    {
+      "literal": ":",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "int",
+      "type": "Identifier",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "->",
+      "type": "Operator",
+    },
+    {
+      "literal": "int",
+      "type": "Identifier",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "if",
+      "type": "Keyword",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "n",
+      "type": "Identifier",
+    },
+    {
+      "literal": "<=",
+      "type": "Operator",
+    },
+    {
+      "literal": "1",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "{",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "return",
+      "type": "Keyword",
+    },
+    {
+      "literal": "n",
+      "type": "Identifier",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "return",
+      "type": "Keyword",
+    },
+    {
+      "literal": "fib",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "n",
+      "type": "Identifier",
+    },
+    {
+      "literal": "-",
+      "type": "Operator",
+    },
+    {
+      "literal": "1",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "+",
+      "type": "Operator",
+    },
+    {
+      "literal": "fib",
+      "type": "Identifier",
+    },
+    {
+      "literal": "(",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "n",
+      "type": "Identifier",
+    },
+    {
+      "literal": "-",
+      "type": "Operator",
+    },
+    {
+      "literal": "2",
+      "type": "Number",
+    },
+    {
+      "literal": ")",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "}",
+      "type": "Delimiter",
+    },
+    {
+      "literal": "",
+      "type": "EOF",
+    },
+  ],
+}
+`;

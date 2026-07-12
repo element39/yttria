@@ -1,0 +1,48 @@
+[|  
+    yttria
+    a blazingly fast*, universal* and easy-to-use* programming language
+    for anything you can imagine*
+    * = not true (yet)
+
+    this file is a complete (albeit meaningless) program
+    that demonstrates the syntax of yttria
+    it is not meant to be run, but rather to be read
+    it is a work in progress, so expect changes in the future
+|]
+
+fn main() -> void {
+    const a := 1
+    const b: int = 2
+    let c := 3
+    let d: float = 4.5
+
+    try foo(x)
+    catch (e) bar(w)
+    finally quux(c)
+
+    io.println(MsgSuccess)
+
+    const numbers: int[] = 34
+
+    if (a < b) {
+        io.println(1)
+    } else if (a > b) {
+        io.println(2)
+    } else {
+        io.println(3)
+    }
+
+    switch (c) {
+        1 -> { io.println(m.x.y) }
+        2 -> { io.println(c.t.p) }
+        default -> { io.println(f.l.e) }
+    }
+}
+
+fn fib(n: int) -> int {
+    if (n <= 1) {
+        return n
+    }
+    
+    return fib(n - 1) + fib(n - 2)
+}
