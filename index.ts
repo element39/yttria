@@ -3,6 +3,7 @@ import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { SemanticAnalyser } from "./src/semantic/analyser"
 import { TypeResolver } from "./src/semantic/typing/resolver"
+import { TypeChecker } from "./src/semantic/typing/checker"
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -38,11 +39,10 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
+use std/io
 fn main() {
-    let x: int = 5
-    let y := x + 2
-    let z := x + y
-    let a: i16 = 10
+    io.println("hi")
+    return 0
 }
 `.trim()
 
@@ -68,9 +68,12 @@ const analyzed = sa.analyse()
 await Bun.write("out/analyzed.json", JSON.stringify(analyzed, null, 2))
 
 const tr = new TypeResolver(analyzed)
-tr.resolve()
+const resolved = tr.resolve()
 
-await Bun.write("out/resolved.json", JSON.stringify(analyzed, null, 2))
+await Bun.write("out/resolved.json", JSON.stringify(resolved, null, 2))
+
+const tc = new TypeChecker(resolved)
+tc.check()
 
 const semanticTime = performance.now()
 

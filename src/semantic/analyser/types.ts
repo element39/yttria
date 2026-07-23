@@ -15,6 +15,10 @@ export type FloatType = TypeValue & {
     kind: "float"
 }
 
+export type BoolType = TypeValue & {
+    kind: "bool"
+}
+
 export type TypeSlot = {
     id: number
     type?: TypeValue

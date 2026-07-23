@@ -46,6 +46,7 @@ export class SemanticAnalyser {
             expression: fn,
             scope: this.scope,
             params: [],
+            returnType: createEmptySlot()
         }
 
         for (const ex of fn.body) {
@@ -54,7 +55,7 @@ export class SemanticAnalyser {
             switch (symbol?.kind) {
                 case "variable": {
                     const variable = symbol as VariableSymbol
-                    this.scope.setVariable(variable)
+                    this.scope.set(variable)
                     //fns.variables.push(variable)
                 }
             }

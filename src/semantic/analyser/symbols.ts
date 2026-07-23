@@ -5,43 +5,48 @@ export type SymbolKind =
     | "program"
     | "function"
     | "variable"
+    | "module"
 
 export type Symbol = {
     kind: SymbolKind
     expression: Expression
+    name: string
 }
 
-export type ProgramSymbol = {
+export type ProgramSymbol = Symbol & {
     kind: "program"
-    name: string
     functions: FunctionSymbol[]
     expression: ProgramExpression    
 }
 
-export type FunctionSymbol = {
+export type FunctionSymbol = Symbol & {
     kind: "function"
-    name: string
     params: VariableSymbol[]
     // variables: VariableSymbol[]
     expression: FunctionDeclaration
     scope: Scope
+    returnType: TypeSlot
 }
 
-export type VariableSymbol = {
+export type VariableSymbol = Symbol & {
     kind: "variable"
-    name: string
     slot: TypeSlot
     expression: VariableDeclaration
+}
+
+export type ModuleSymbol = Symbol & {
+    kind: "module"
+    exports: Map<string, Symbol>
 }
 
 export class Scope {
     parent?: Scope
     children: Scope[] = []
-    variables: Map<string, VariableSymbol>
+    symbols: Map<string, Symbol>
 
     constructor(parent?: Scope) {
         this.parent = parent
-        this.variables = new Map()
+        this.symbols = new Map()
     }
 
     pop(): Scope {
@@ -54,18 +59,19 @@ export class Scope {
         return child
     }
 
-    find(name: string): VariableSymbol | undefined {
-        if (this.variables.has(name)) return this.variables.get(name)
+    find(name: string): Symbol | undefined {
+        if (this.symbols.has(name)) return this.symbols.get(name)
         if (this.parent) return this.parent.find(name)
     }
 
-    setVariable(symbol: VariableSymbol): void {
-        this.variables.set(symbol.name, symbol)
+    set(s: Symbol): void {
+        if (this.symbols.has(s.name)) throw new Error(`symbol "${s.name}" already exists in this scope`)
+        this.symbols.set(s.name, s)
     }
 
     toJSON() {
         return {
-            variables: [...this.variables.values()],
+            symbols: [...this.symbols.values()],
             children: this.children
         }
     }

@@ -52,7 +52,7 @@ export type Identifier = Expression & {
 export type MemberAccess = Expression & {
     type: "MemberAccess"
     object: Expression
-    property: Expression
+    property: Identifier
 }
 
 export type ImportExpression = Expression & {
@@ -73,7 +73,7 @@ export type FunctionDeclaration = Expression & {
 
 export type FunctionCall = Expression & {
     type: "FunctionCall"
-    callee: Identifier// | MemberAccess
+    callee: Identifier | MemberAccess
     // inferredCallee?: CheckerType | CheckerPlaceholder
     args: Expression[]
 }

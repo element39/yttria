@@ -1,13 +1,15 @@
-import { ExpressionType, Expression, Identifier, BinaryExpression, NumberLiteral } from "../../parser/ast";
-import { ProgramSymbol, Scope, VariableSymbol } from "../analyser/symbols";
-import { createEmptySlot, IntType, TypeSlot, TypeValue } from "../analyser/types";
+import { ExpressionType, Expression, Identifier, BinaryExpression, NumberLiteral, MemberAccess } from "../../parser/ast";
+import { FunctionSymbol, ModuleSymbol, ProgramSymbol, Scope, Symbol, VariableSymbol } from "../analyser/symbols";
+import { BoolType, createEmptySlot, IntType, TypeSlot, TypeValue } from "../analyser/types";
 
 export class TypeResolver {
     program: ProgramSymbol
     table: { [key in ExpressionType]?: (e: Expression, scope: Scope) => TypeValue | undefined } = {
         NumberLiteral: this.resolveNumberLiteral.bind(this),
+        BooleanLiteral: this.resolveBooleanLiteral.bind(this),
         Identifier: this.resolveIdentifier.bind(this),
-        BinaryExpression: this.resolveBinaryExpression.bind(this)
+        BinaryExpression: this.resolveBinaryExpression.bind(this),
+        MemberAccess: this.resolveMemberAccess.bind(this)
     }
 
     constructor(program: ProgramSymbol) {
@@ -23,8 +25,13 @@ export class TypeResolver {
     }
 
     resolveScope(scope: Scope) {
-        for (const variable of scope.variables.values()) {
-            this.resolveVariable(variable, scope)
+        for (const symbol of scope.symbols.values()) {
+           switch (symbol.kind) {
+                case "variable": {
+                    const variable = symbol as VariableSymbol
+                    this.resolveVariable(variable, scope)
+                }
+           }
         }
 
         for (const child of scope.children) {
@@ -52,13 +59,94 @@ export class TypeResolver {
         } as IntType
     }
 
-    resolveIdentifier(e: Expression, scope: Scope): TypeValue | undefined {
-        const i = e as Identifier
-        const variable = scope.find(i.value)
+    resolveBooleanLiteral(e: Expression, scope: Scope): TypeValue {
+        return {
+            kind: "bool"
+        } as BoolType
+    }
 
-        if (!variable) throw new Error(`unknown variable '${i.value}'`)
-        if (!variable.slot.type) this.resolveVariable(variable, scope)
-        return variable.slot.type
+    resolveIdentifier(e: Expression, scope: Scope): TypeValue | undefined {
+        const symbol = this.resolveSymbol(e, scope)
+
+        if (!symbol)
+            throw new Error("unknown symbol")
+
+        switch (symbol.kind) {
+            case "variable": {
+                const variable = symbol as VariableSymbol
+
+                if (!variable.slot.type)
+                    this.resolveVariable(variable, scope)
+
+                return variable.slot.type
+            }
+        }
+    }
+
+    resolveSymbol(e: Expression, scope: Scope): Symbol | undefined {
+        switch (e.type) {
+            case "Identifier": {
+                const i = e as Identifier
+                return scope.find(i.value)
+            }
+
+            case "MemberAccess": {
+                return this.resolveMemberAccessSymbol(
+                    e as MemberAccess,
+                    scope
+                )
+            }
+        }
+    }
+
+    resolveMemberAccess(
+        e: Expression,
+        scope: Scope
+    ): TypeValue | undefined {
+
+        const symbol = this.resolveSymbol(e, scope)
+
+        if (!symbol)
+            return
+
+        switch (symbol.kind) {
+
+            case "variable":
+                return (symbol as VariableSymbol).slot.type
+
+            case "function":
+                return (symbol as FunctionSymbol).returnType.type
+        }
+    }
+
+    resolveMemberAccessSymbol(
+        e: MemberAccess,
+        scope: Scope
+    ): Symbol {
+
+        const object = this.resolveSymbol(e.object, scope)
+
+        if (!object) throw new Error("unknown object")
+
+        switch (object.kind) {
+            case "module": {
+                const module = object as ModuleSymbol
+                const property = e.property as Identifier
+                const symbol = module.exports.get(property.value)
+
+                if (!symbol)
+                    throw new Error(
+                        `'${module.name}' has no member '${property.value}'`
+                    )
+
+                return symbol
+            }
+
+            default:
+                throw new Error(
+                    `'${object.name}' has no members`
+                )
+        }
     }
 
     resolveBinaryExpression(e: Expression, scope: Scope): TypeValue | undefined {
