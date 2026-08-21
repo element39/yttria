@@ -19,14 +19,14 @@ current version: `v0.0.3.alpha-1`
   lexer             100%     █████████████      practically complete
   parser            100%     █████████████      practically complete
   typechecker       85%      ██████████▓░░      complete soon
-  codegen           45%      ███████▓░░░░░      2-3 weeks
+  codegen           0%       ░░░░░░░░░░░░░      no eta
 ```
 
 ### std
 ```
   item              xx%      progress  bar      time until complete (from last task)
 
-  std/io            10%      █░░░░░░░░░░░░      2 weeks
+  std/io            0%       ░░░░░░░░░░░░░      no eta
   std/fs            0%       ░░░░░░░░░░░░░      no eta
   std/net           0%       ░░░░░░░░░░░░░      no eta
   std/math          0%       ░░░░░░░░░░░░░      no eta
@@ -42,6 +42,6 @@ current version: `v0.0.3.alpha-1`
 ```
 
 ## status report
-> last updated: 28/7/2025 (dd/mm/yyyy)
+> last updated: 22/08/2026 (dd/mm/yyyy)
 
-yttria is still in early development; lexer and parser are finished!!! typechecker (and now inferrer) have been overhauled, codegen still supports core features buandt advanced features are still in progress. basic stdlib available but unusable for now
+yttria is still in early development; lexer and parser are finished, type system been rewritten for the 50th time & codegen is about to be started. std library is still in the planning phase, and no tools have been started yet. expect a lot of breaking changes in the future.

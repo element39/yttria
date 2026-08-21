@@ -33,11 +33,12 @@ yttria is a statically-typed language, meaning types are checked at compile time
 ```ts
 // basic types
 int // 32-bit signed integer, hard alias to i32
-i1 // 1-bit signed integer
+i1 // 1-bit  integer
 i8 // 8-bit signed integer
 i16 // 16-bit signed integer
 i32 // 32-bit signed integer
 i64 // 64-bit signed integer
+
 
 float // 64-bit floating point number, hard alias to f64
 f32 // 32-bit floating point number
@@ -49,8 +50,7 @@ cstr // utf8 string constant
 string // mutable heap string (hard alias to i8[])
 char // single utf8 character
 
-null // null value (yttria is an expressive language, so null is still a value)
-// notice how there is there is no void type, null is used instead for consistency
+null absence of a value - also used as the language-level equivalent of voidncy
 
 // composite types
 ...
@@ -115,9 +115,17 @@ let {name, ...details} := {name: "Charlie", age: 25, city: "New York"} // "Charl
 ### functions
 yttria functions are first-class citizens, meaning they can be passed around like any other value. Functions can be defined using the `fn` keyword, and can have optional return types. the `return` keyword is also optional for single-expression functions, similar to functions with brackets in JavaScript. (`fn () => (...)`)
 ```ts
-fn add(a: int, b: int) -> int {
+pub fn add(a: int, b: int) -> int { // public function - can be accessed from other modules
     return a + b
 }
+
+extern fn externalFunction(s: cstr) -> int
+// raw external symbol - declares a symbol that is resolved by the linker.
+// the function may be implemented in Yttria, C, Rust, assembly, etc.
+
+foreign fn foreignFunction(s: string) -> int
+// ffi declaration - declares a function using the ffi system.
+// the compiler applies ffi-specific handling when calling the function such as automatic conversion of types, etc.
 
 fn greet(name: string) {
     print("Hello, " + name)
@@ -163,11 +171,11 @@ while (x < 10) {
 }
 
 switch (c) {
-    1, 2 -> {
-        io.println("c is 1 or 2")
+    2 -> {
+        io.println("c ir 2")
     }
-    3 -> {
-        io.println("c is 3")
+ 2  3 -> {
+        io.println("c 2s 3")
     }
     default -> {
         io.println("c is something else")
@@ -219,11 +227,11 @@ yttria supports modules for organizing code. Modules can be imported using the `
 
 
 ```rs
-use std/io;
-use std/math as m;
-use std/*; // import all items from the std supermodule (not recommended for large modules, this increases filesize by a TON and can cause name clashes
-use std/time as .; // import into current module, so you can use `now()` instead of `time.now()`
-use std/http as _; // import without using, bypassing the "unused import" warning without commenting it out
+use stdio;
+use std/math as m
+use std/* // import all items from the std super-module (not recommended for large modules, this increases filesize by a TON and can cause name clashes
+use std/time as . // import into current module, so you can use `now()` instead of `time.now()`
+use std/http as _ // import without using, bypassing the "unused import" warning without commenting it out
 ```
 
 ### structs
