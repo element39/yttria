@@ -1,6 +1,7 @@
 export type TypeKind =
     | "int"
     | "float"
+    | "bool"
 
 export type TypeValue = {
     kind: TypeKind
@@ -19,16 +20,14 @@ export type BoolType = TypeValue & {
     kind: "bool"
 }
 
-export type TypeSlot = {
+export type TypeHolder = {
     id: number
     type?: TypeValue
-    // sources: TypeSlot[]
 }
 
-let slotId = 0
-export const createEmptySlot = (): TypeSlot => {
+let holderId = 0
+export const createTypeHolder = (): TypeHolder => {
     return {
-        id: slotId++,
-        // sources: []
+        id: holderId++,
     }
 }

@@ -1,5 +1,5 @@
-import { Expression, FunctionDeclaration, ProgramExpression, VariableDeclaration } from "../../parser/ast"
-import { TypeSlot } from "./types"
+import { Expression, FunctionDeclaration, FunctionParam, ProgramExpression, VariableDeclaration } from "../parser/ast"
+import { TypeHolder } from "./types"
 
 export type SymbolKind =
     | "program"
@@ -25,13 +25,13 @@ export type FunctionSymbol = Symbol & {
     // variables: VariableSymbol[]
     expression: FunctionDeclaration
     scope: Scope
-    returnType: TypeSlot
+    returnType: TypeHolder
 }
 
 export type VariableSymbol = Symbol & {
     kind: "variable"
-    slot: TypeSlot
-    expression: VariableDeclaration
+    typeHolder: TypeHolder
+    expression: VariableDeclaration | FunctionParam
 }
 
 export type ModuleSymbol = Symbol & {

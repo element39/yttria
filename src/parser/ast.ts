@@ -1,8 +1,10 @@
 import { Modifier } from "../lexer/token"
+import { TypeValue } from "../semantic/types"
 //import { CheckerPlaceholder, CheckerType } from "../typing/types"
 
 export type Expression = {
     type: ExpressionType
+    inferredType?: TypeValue
 }
 
 export type ExpressionType =

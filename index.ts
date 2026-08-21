@@ -2,8 +2,10 @@ import { rmSync } from "fs"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { SemanticAnalyser } from "./src/semantic/analyser"
-import { TypeResolver } from "./src/semantic/typing/resolver"
-import { TypeChecker } from "./src/semantic/typing/checker"
+import { SemanticChecker } from "./src/semantic/checker"
+import { SemanticInferrer } from "./src/semantic/inferrer"
+import { SemanticResolver } from "./src/semantic/resolver"
+
 rmSync("./out", { recursive: true, force: true })
 
 // error driven development right here
@@ -39,10 +41,8 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-use std/io
-fn main() {
-    io.println("hi")
-    return 0
+fn add(a: int, b: int) -> int {
+    return a + b
 }
 `.trim()
 
@@ -65,15 +65,20 @@ console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms,
 const sa = new SemanticAnalyser(ast)
 const analyzed = sa.analyse()
 
-await Bun.write("out/analyzed.json", JSON.stringify(analyzed, null, 2))
+await Bun.write("out/semantic/analyzed.json", JSON.stringify(analyzed, null, 2))
 
-const tr = new TypeResolver(analyzed)
-const resolved = tr.resolve()
+const sr = new SemanticResolver(analyzed)
+const resolved = sr.resolve()
 
-await Bun.write("out/resolved.json", JSON.stringify(resolved, null, 2))
+await Bun.write("out/semantic/resolved.json", JSON.stringify(resolved, null, 2))
 
-const tc = new TypeChecker(resolved)
-tc.check()
+const si = new SemanticInferrer(resolved)
+const inferred = si.infer()
+
+await Bun.write("out/semantic/inferred.json", JSON.stringify(inferred, null, 2))
+
+const sc = new SemanticChecker(inferred)
+sc.check()
 
 const semanticTime = performance.now()
 

@@ -1,6 +1,6 @@
-import { Expression, ExpressionType, FunctionDeclaration, ProgramExpression, VariableDeclaration } from "../../parser/ast";
+import { Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, ProgramExpression, VariableDeclaration } from "../parser/ast";
 import { FunctionSymbol, ProgramSymbol, Scope, Symbol, VariableSymbol } from "./symbols";
-import { createEmptySlot } from "./types";
+import { createTypeHolder } from "./types";
 
 export class SemanticAnalyser {
     ast: ProgramExpression
@@ -9,7 +9,8 @@ export class SemanticAnalyser {
 
     table: { [key in ExpressionType]?: (t: Expression) => Symbol | null } = {
             FunctionDeclaration: this.visitFunctionDeclaration.bind(this),
-            VariableDeclaration: this.visitVariableDeclaration.bind(this)
+            VariableDeclaration: this.visitVariableDeclaration.bind(this),
+            FunctionCall: this.visitFunctionCall.bind(this)
     }
 
     constructor(ast: ProgramExpression) {
@@ -26,6 +27,8 @@ export class SemanticAnalyser {
 
         for (const expr of this.ast.body) {
             const symbol = this.table[expr.type]?.(expr)
+
+            if (symbol) this.scope.set(symbol)
 
             switch (symbol?.kind) {
                 case "function":
@@ -46,7 +49,19 @@ export class SemanticAnalyser {
             expression: fn,
             scope: this.scope,
             params: [],
-            returnType: createEmptySlot()
+            returnType: createTypeHolder()
+        }
+
+        for (const param of fn.params) {
+            const variable: VariableSymbol = {
+                kind: "variable",
+                name: param.name.value,
+                expression: param,
+                typeHolder: createTypeHolder()
+            }
+
+            this.scope.set(variable)
+            fns.params.push(variable)
         }
 
         for (const ex of fn.body) {
@@ -70,10 +85,22 @@ export class SemanticAnalyser {
         const symbol: VariableSymbol = {
             kind: "variable",
             name: v.name.value,
-            slot: createEmptySlot(),
+            typeHolder: createTypeHolder(),
             expression: v
         }
 
         return symbol
+    }
+
+    visitFunctionCall(e: Expression) {
+        const call = e as FunctionCall
+
+        const callee = call.callee as Identifier
+
+        const symbol = this.scope.find(callee.value)
+        if (!symbol) throw new Error(`unknown function "${callee.value}"`)
+
+        console.log(`found symbol for ${callee.value}:`, symbol)
+        return null
     }
 }
