@@ -1,5 +1,5 @@
 import { Keyword, Modifier, Modifiers, Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, ImportExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableDeclaration, WhileExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, ImportExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableAssignment, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -20,16 +20,17 @@ export class Parser {
     }
 
     precedence: { [op: string]: number } = {
-        "==": 1,
-        "!=": 1,
-        "<": 2,
-        ">": 2,
-        "<=": 2,
-        ">=": 2,
-        "+": 3,
-        "-": 3,
-        "*": 4,
-        "/": 4,
+        "=": 1,
+        "==": 2,
+        "!=": 2,
+        "<": 3,
+        ">": 3,
+        "<=": 3,
+        ">=": 3,
+        "+": 4,
+        "-": 4,
+        "*": 5,
+        "/": 5,
     }
 
     modifiers: Modifier[] = []
@@ -126,17 +127,35 @@ export class Parser {
             }
 
             else if (this.peek().type === "Operator" && this.getPrecedence(this.peek()) > precedence) {
-                const op = this.peek();
-                this.advance();
-                const right = this.parseExpression(this.getPrecedence(op));
-                if (!right) return null;
-                
-                left = {
-                    type: "BinaryExpression",
-                    left,
-                    operator: op.literal,
-                    right
-                } as BinaryExpression;
+                    const op = this.peek();
+                    this.advance();
+
+                    const right = this.parseExpression(
+                        op.literal === "="
+                            ? this.getPrecedence(op) - 1
+                            : this.getPrecedence(op)
+                    );
+
+                    if (!right) return null;
+
+                    if (op.literal === "=") {
+                        if (left?.type !== "Identifier") {
+                            throw new Error("left side of assignment must be an identifier");
+                        }
+
+                        left = {
+                            type: "VariableAssignment",
+                            name: left as Identifier,
+                            value: right
+                        } as VariableAssignment;
+                    } else {
+                        left = {
+                            type: "BinaryExpression",
+                            left,
+                            operator: op.literal,
+                            right
+                        } as BinaryExpression;
+                    }
             }
             else {
                 break;

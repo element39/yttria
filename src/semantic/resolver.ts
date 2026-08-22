@@ -2,23 +2,23 @@ import { FunctionSymbol, ProgramSymbol, Symbol, SymbolKind, VariableSymbol } fro
 import { BoolType, FloatType, IntType, TypeHolder, TypeValue } from "./types"
 
 export class SemanticResolver {
-    program: ProgramSymbol
+    analyzed: ProgramSymbol
 
     table: { [key in SymbolKind]?: (s: Symbol) => Symbol } = {
         function: this.resolveFunction.bind(this),
         variable: this.resolveVariable.bind(this)
     }
 
-    constructor(program: ProgramSymbol) {
-        this.program = program
+    constructor(analyzed: ProgramSymbol) {
+        this.analyzed = analyzed
     }
     
     resolve() {
-        for (const fn of this.program.functions) {
+        for (const fn of this.analyzed.functions) {
             this.table[fn.kind]?.(fn)
         }
 
-        return this.program
+        return this.analyzed
     }
 
     resolveFunction(s: Symbol): Symbol {

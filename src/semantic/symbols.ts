@@ -24,7 +24,7 @@ export type FunctionSymbol = Symbol & {
     params: VariableSymbol[]
     // variables: VariableSymbol[]
     expression: FunctionDeclaration
-    scope: Scope
+    scope: SemanticScope
     returnType: TypeHolder
 }
 
@@ -39,22 +39,21 @@ export type ModuleSymbol = Symbol & {
     exports: Map<string, Symbol>
 }
 
-export class Scope {
-    parent?: Scope
-    children: Scope[] = []
-    symbols: Map<string, Symbol>
+export class SemanticScope {
+    parent?: SemanticScope
+    children: SemanticScope[] = []
+    symbols: Map<string, Symbol> = new Map()
 
-    constructor(parent?: Scope) {
+    constructor(parent?: SemanticScope) {
         this.parent = parent
-        this.symbols = new Map()
     }
 
-    pop(): Scope {
+    pop(): SemanticScope {
         return this.parent || this
     }
 
-    push(): Scope {
-        const child = new Scope(this)
+    push(): SemanticScope {
+        const child = new SemanticScope(this)
         this.children.push(child)
         return child
     }

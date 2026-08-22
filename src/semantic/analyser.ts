@@ -1,10 +1,10 @@
 import { Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, ProgramExpression, VariableDeclaration } from "../parser/ast";
-import { FunctionSymbol, ProgramSymbol, Scope, Symbol, VariableSymbol } from "./symbols";
+import { FunctionSymbol, ProgramSymbol, SemanticScope, Symbol, VariableSymbol } from "./symbols";
 import { createTypeHolder } from "./types";
 
 export class SemanticAnalyser {
     ast: ProgramExpression
-    scope: Scope = new Scope()
+    scope: SemanticScope = new SemanticScope()
 
 
     table: { [key in ExpressionType]?: (t: Expression) => Symbol | null } = {
@@ -76,7 +76,7 @@ export class SemanticAnalyser {
             }
         }
 
-        this.scope = this.scope.pop() as Scope
+        this.scope = this.scope.pop() as SemanticScope
         return fns as FunctionSymbol
     }
 
@@ -94,13 +94,11 @@ export class SemanticAnalyser {
 
     visitFunctionCall(e: Expression) {
         const call = e as FunctionCall
-
         const callee = call.callee as Identifier
 
         const symbol = this.scope.find(callee.value)
         if (!symbol) throw new Error(`unknown function "${callee.value}"`)
 
-        console.log(`found symbol for ${callee.value}:`, symbol)
         return null
     }
 }

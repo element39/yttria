@@ -1,10 +1,10 @@
-import { BinaryExpression, Expression, ExpressionType, Identifier, NumberLiteral, ReturnExpression } from "../parser/ast"
-import { FunctionSymbol, ProgramSymbol, Scope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, Identifier, NumberLiteral, PreUnaryExpression, ReturnExpression } from "../parser/ast"
+import { FunctionSymbol, ProgramSymbol, SemanticScope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
 import { FloatType, IntType, TypeValue } from "./types"
 
 export class SemanticInferrer {
-    program: ProgramSymbol
-    scope!: Scope
+    resolved: ProgramSymbol
+    scope!: SemanticScope
 
     symbols: {
         [key in SymbolKind]?: (s: Symbol) => Symbol
@@ -18,21 +18,24 @@ export class SemanticInferrer {
     } = {
         NumberLiteral: this.inferNumberLiteral.bind(this),
         BooleanLiteral: this.inferBooleanLiteral.bind(this),
+        PreUnaryExpression: this.inferPreUnaryExpression.bind(this),
+        PostUnaryExpression: this.inferPostUnaryExpression.bind(this),
         BinaryExpression: this.inferBinaryExpression.bind(this),
         Identifier: this.inferIdentifier.bind(this),
         ReturnExpression: this.inferReturnExpression.bind(this),
+        FunctionCall: this.inferFunctionCall.bind(this)
     }
 
-    constructor(program: ProgramSymbol) {
-        this.program = program
+    constructor(resolved: ProgramSymbol) {
+        this.resolved = resolved
     }
 
     infer() {
-        for (const fn of this.program.functions) {
+        for (const fn of this.resolved.functions) {
             this.symbols[fn.kind]?.(fn)
         }
 
-        return this.program
+        return this.resolved
     }
 
     inferFunction(s: Symbol): Symbol {
@@ -155,7 +158,6 @@ export class SemanticInferrer {
 
     inferReturnExpression(e: Expression): TypeValue {
         const r = e as ReturnExpression
-
         const type = this.expressions[r.value.type]?.(r.value)
 
         if (!type) {
@@ -188,6 +190,76 @@ export class SemanticInferrer {
     inferBooleanLiteral(e: Expression): TypeValue {
         const type: TypeValue = {
             kind: "bool"
+        }
+
+        e.inferredType = type
+        return type
+    }
+
+    inferFunctionCall(e: Expression): TypeValue {
+        const c = e as FunctionCall
+        const callee = c.callee as Identifier
+
+        const symbol = this.scope.find(callee.value)
+
+        if (!symbol) throw new Error(`unknown function "${callee.value}"`)
+
+        if (symbol.kind !== "function") throw new Error(`"${callee.value}" is not a function`)
+
+        const fn = symbol as FunctionSymbol
+
+        if (!fn.returnType.type) {
+            throw new Error(`return type of "${callee.value}" is unresolved`)
+        }
+
+        e.inferredType = fn.returnType.type
+        return fn.returnType.type
+    }
+
+    inferPreUnaryExpression(e: Expression): TypeValue {
+        const u = e as PreUnaryExpression
+        const type = this.expressions[u.operand.type]?.(u.operand)
+
+        if (!type) {
+            throw new Error(`cannot infer type of ${u.operand.type}`)
+        }
+
+        switch (u.operator) {
+            case "-":
+                if (type.kind !== "int" && type.kind !== "float") {
+                    throw new Error(`cannot apply "${u.operator}" to ${type.kind}`)
+                }
+                break
+            case "!":
+                if (type.kind !== "bool") {
+                    throw new Error(`cannot apply "${u.operator}" to ${type.kind}`)
+                }
+                break
+            default:
+                throw new Error(`unknown operator "${u.operator}"`)
+        }
+
+        e.inferredType = type
+        return type
+    }
+    
+    inferPostUnaryExpression(e: Expression): TypeValue {
+        const u = e as PreUnaryExpression
+        const type = this.expressions[u.operand.type]?.(u.operand)
+
+        if (!type) {
+            throw new Error(`cannot infer type of ${u.operand.type}`)
+        }
+
+        switch (u.operator) {
+            case "++":
+            case "--":
+                if (type.kind !== "int" && type.kind !== "float") {
+                    throw new Error(`cannot apply "${u.operator}" to ${type.kind}`)
+                }
+                break
+            default:
+                throw new Error(`unknown operator "${u.operator}"`)
         }
 
         e.inferredType = type

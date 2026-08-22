@@ -261,7 +261,7 @@ describe('llvm-bun', () => {
 		const fn = mod.createFunction('main', fnType);
 		const block = fn.addBlock('entry');
 		expect(block.handle).toBeTruthy();
-		block.erase();
+		block.delete();
 		expect(block.handle).toBeNull();
 	});
 })

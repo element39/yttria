@@ -14,7 +14,7 @@ import {
 	LLVMBuildFMul,
 	LLVMBuildFSub,
 	LLVMBuildICmp,
-	LLVMBuildLoad,
+	LLVMBuildLoad2,
 	LLVMBuildMul,
 	LLVMBuildRet,
 	LLVMBuildSDiv,
@@ -30,6 +30,7 @@ import {
 	LLVMDoubleTypeInContext,
 	LLVMFloatTypeInContext,
 	LLVMFunctionType,
+	LLVMGetBasicBlockTerminator,
 	LLVMGetInsertBlock,
 	LLVMGetIntTypeWidth,
 	LLVMGetParam,
@@ -46,6 +47,7 @@ import {
 	LLVMSetGlobalConstant,
 	LLVMSetInitializer,
 	LLVMSetLinkage,
+	LLVMSetValueName2,
 	LLVMTypeOf,
 	LLVMVerifyFunction,
 	LLVMVerifyModule,
@@ -55,10 +57,24 @@ import {
 type Pointer = any;
 
 export enum Linkage {
-	External = 0,
-	Internal = 1,
+    External = 0,
+    AvailableExternally = 1,
+    LinkOnceAny = 2,
+    LinkOnceODR = 3,
+    LinkOnceODRAutoHide = 4,
+    WeakAny = 5,
+    WeakODR = 6,
+    Appending = 7,
+    Internal = 8,
+    Private = 9,
+    DLLImport = 10,
+    DLLExport = 11,
+    ExternalWeak = 12,
+    Ghost = 13,
+    Common = 14,
+    LinkerPrivate = 15,
+    LinkerPrivateWeak = 16,
 }
-
 
 /**
  * context for llvm objects
@@ -215,10 +231,10 @@ public type?: FunctionType;
 	 @param module parent module
 	*/
 	constructor(ptr: Pointer, module: Module, type?: FunctionType) {
-	this.ptr = ptr;
-	this.module = module;
-	this.type = type;
-	this.paramCount = type ? type.params.length : 0;
+		this.ptr = ptr;
+		this.module = module;
+		this.type = type;
+		this.paramCount = type ? type.params.length : 0;
 	}
 
 	/**
@@ -277,15 +293,22 @@ export class BasicBlock {
 		this.parent = parent;
 	}
 
+	get terminated(): boolean {
+		if (!this.ptr) return false;
+
+		return LLVMGetBasicBlockTerminator(this.ptr) !== null;
+	}
+
 	/**
 	 get the raw pointer
 	*/
 	get handle() { return this.ptr; }
+	
 
 	/**
-	 * Erase this block from its parent function
+	 * Delete this block from its parent function
 	 */
-	erase(): void {
+	delete(): void {
 		if (!this.parent) return;
 		LLVMDeleteBasicBlock(this.ptr);
 		this.ptr = null;
@@ -336,6 +359,16 @@ export class IRBuilder {
 	insertInto(bb: BasicBlock): void {
 		LLVMPositionBuilderAtEnd(this.ptr, bb.handle);
 		this._currentFunc = bb.parent;
+	}
+
+	neg(value: Value, name = "negtmp"): Value {
+		const zero = Value.constInt(value.getType(), 0);
+		return this.sub(zero, value);
+	}
+
+	not(value: Value, name = "nottmp"): Value {
+		const zero = Value.constInt(value.getType(), 0);
+		return this.icmpEQ(value, zero, name);
 	}
 
 	/**
@@ -422,8 +455,8 @@ export class IRBuilder {
 	 @param name variable name
 	 @returns a pointer to the allocated memory
 	 */
-	alloca(type: Type, name = "alloca"): Value {
-		return new Value(LLVMBuildAlloca(this.ptr, type.handle, Buffer.from(name + "\0")));
+	alloca(type: Type, name = "alloca"): MemoryValue {
+		return new MemoryValue(LLVMBuildAlloca(this.ptr, type.handle, Buffer.from(name + "\0")), type);
 	}
 
 	/**
@@ -431,7 +464,7 @@ export class IRBuilder {
 	 @param value the value to store
 	 @param ptr the pointer to store to
 	 */
-	store(value: Value, ptr: Value): void {
+	store(value: Value, ptr: MemoryValue): void {
 		LLVMBuildStore(this.ptr, value.handle, ptr.handle);
 	}
 
@@ -441,8 +474,8 @@ export class IRBuilder {
 	 @param name variable name
 	 @returns the loaded value
 	 */
-	load(ptr: Value, name = "load"): Value {
-		return new Value(LLVMBuildLoad(this.ptr, ptr.handle, Buffer.from(name + "\0")));
+	load(type: Type, ptr: MemoryValue, name = "load"): Value {
+		return new Value(LLVMBuildLoad2(this.ptr, type.handle, ptr.handle, Buffer.from(name + "\0")), type);
 	}
 
 	/**
@@ -752,7 +785,7 @@ export class Type {
 */
 export class Value {
 	private ptr: Pointer;
-	private _type?: Type;
+	protected _type?: Type;
 
 	/**
 	 create a value object
@@ -761,6 +794,10 @@ export class Value {
 	constructor(ptr: Pointer, type?: Type) {
 		this.ptr = ptr;
 		this._type = type;
+	}
+
+	setName(name: string): void {
+		LLVMSetValueName2(this.ptr, Buffer.from(name + "\0"), name.length);
 	}
 
 	/**
@@ -801,6 +838,19 @@ export class Value {
 	*/
 	get handle() { return this.ptr; }
 }
+
+export class MemoryValue extends Value {
+    private readonly valueType: Type;
+
+	getValueType(): Type {
+		return this.valueType;
+	}
+
+    constructor(ptr: Pointer, valueType: Type) {
+        super(ptr, Type.pointer(valueType));
+        this.valueType = valueType;
+    }
+}	
 
 const LLVM = {
 	Context,

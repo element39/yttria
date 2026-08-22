@@ -1,4 +1,6 @@
 import { rmSync } from "fs"
+import { platform } from "os"
+import { Codegen } from "./src/gen/llvm"
 import { Lexer } from "./src/lexer"
 import { Parser } from "./src/parser"
 import { SemanticAnalyser } from "./src/semantic/analyser"
@@ -41,8 +43,12 @@ rmSync("./out", { recursive: true, force: true })
 // `.trim()
 
 const program = `
-fn add(a: int, b: int) -> int {
-    return a + b
+extern fn putchar(c: int) -> int
+
+pub fn main() -> int {
+    putchar(72)
+
+    return 2
 }
 `.trim()
 
@@ -78,10 +84,46 @@ const inferred = si.infer()
 await Bun.write("out/semantic/inferred.json", JSON.stringify(inferred, null, 2))
 
 const sc = new SemanticChecker(inferred)
-sc.check()
+const symbol = sc.check()
 
 const semanticTime = performance.now()
 
 console.log(`semantic analysis done in ${(semanticTime - astTime).toFixed(3)}ms`)
 
-console.log(`total time: ${(semanticTime - start).toFixed(3)}ms`)
+const cg = new Codegen("main", ast, symbol)
+const ll = cg.gen()
+
+await Bun.write("out/out.ll", ll)
+
+const codegenTime = performance.now()
+
+console.log(`codegen done in ${(codegenTime - semanticTime).toFixed(3)}ms`)
+
+// Bun.$`clang -c out/out.ll -o out/out.o`
+// platform() === "win32"
+//     ? Bun.$`clang out/out.o -o out/out.exe`
+//     : Bun.$`clang out/out.o -o out/out`
+
+Bun.spawnSync({
+    cmd: ["clang", "-c", "out/out.ll", "-o", "out/out.o"],
+    stdout: "inherit",
+    stderr: "inherit"
+})
+
+Bun.spawnSync({
+    cmd: platform() === "win32" ? ["clang", "out/out.o", "-o", "out/out.exe"] : ["clang", "out/out.o", "-o", "out/out"],
+    stdout: "inherit",
+    stderr: "inherit"
+})
+
+const linkTime = performance.now()
+console.log(`compiled in ${(performance.now() - codegenTime).toFixed(3)}ms`)
+console.log(`total time: ${(linkTime - start).toFixed(3)}ms\n`)
+
+const process = Bun.spawnSync({
+    cmd: ["./out/out"],
+    stdout: "inherit",
+    stderr: "inherit"
+})
+
+console.log(`\n\nprogram exited with code ${process.exitCode}`)

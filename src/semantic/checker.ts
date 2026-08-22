@@ -7,22 +7,22 @@ import { FunctionSymbol, ProgramSymbol } from "./symbols"
 import { TypeValue } from "./types"
 
 export class SemanticChecker {
-    program: ProgramSymbol
+    inferred: ProgramSymbol
 
     expressions: { [key in ExpressionType]?: (e: Expression, expected?: TypeValue) => void } = {
         ReturnExpression: this.checkReturnExpression.bind(this),
     }
 
-    constructor(program: ProgramSymbol) {
-        this.program = program
+    constructor(inferred: ProgramSymbol) {
+        this.inferred = inferred
     }
 
     check() {
-        for (const fn of this.program.functions) {
+        for (const fn of this.inferred.functions) {
             this.checkFunction(fn)
         }
 
-        return this.program
+        return this.inferred
     }
 
     checkFunction(fn: FunctionSymbol): void {

@@ -40,6 +40,7 @@ const lib = dlopen(location, {
 	LLVMDeleteBasicBlock: { args: ["ptr"], returns: "void" },
 	LLVMGetParam: { args: ["ptr", "uint32_t"], returns: "ptr" },
 	LLVMSetLinkage: { args: ["ptr", "int32_t"], returns: "void" },
+	LLVMGetBasicBlockTerminator: { args: ["ptr"], returns: "ptr" },
 
 	// ir building
 	LLVMPositionBuilderAtEnd: { args: ["ptr", "ptr"], returns: "void" },
@@ -59,7 +60,7 @@ const lib = dlopen(location, {
 	// memory
 	LLVMBuildAlloca: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
 	LLVMBuildStore: { args: ["ptr", "ptr", "ptr"], returns: "ptr" },
-	LLVMBuildLoad: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
+	LLVMBuildLoad2: { args: ["ptr", "ptr", "ptr", "cstring"], returns: "ptr" },
 
 	// constants
 	LLVMConstInt: { args: ["ptr", "uint64_t", "bool"], returns: "ptr" },
@@ -70,6 +71,7 @@ const lib = dlopen(location, {
 	LLVMVerifyFunction: { args: ["ptr", "uint32_t"], returns: "int" },
 	LLVMVerifyModule: { args: ["ptr", "uint32_t", "ptr"], returns: "int" },
 	LLVMBuildBitCast: { args: ["ptr", "ptr", "ptr", "cstring"], returns: "ptr" },
+	LLVMSetValueName2: { args: ["ptr", "cstring", "uint32_t"], returns: "void" },
 
 	// introspection
 	LLVMGetIntTypeWidth: { args: ["ptr"], returns: "uint32_t" },
@@ -99,6 +101,7 @@ export const {
 	LLVMDeleteBasicBlock,
 	LLVMBuildRet,
 	LLVMSetLinkage,
+	LLVMGetBasicBlockTerminator,
 	
 	LLVMBuildAdd,
 	LLVMBuildFAdd,
@@ -123,7 +126,7 @@ export const {
 	LLVMGetIntTypeWidth,
 	LLVMBuildAlloca,
 	LLVMBuildStore,
-	LLVMBuildLoad,
+	LLVMBuildLoad2,
 	LLVMGetNamedFunction,
 	LLVMBuildCall2,
 	LLVMBuildICmp,
@@ -134,5 +137,6 @@ export const {
 	LLVMSetInitializer,
 	LLVMSetGlobalConstant,
 	LLVMBuildBitCast,
+	LLVMSetValueName2,
 	LLVMGetTypeKind
 } = lib.symbols;
