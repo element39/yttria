@@ -37,6 +37,8 @@ export type VariableSymbol = Symbol & {
 export type ModuleSymbol = Symbol & {
     kind: "module"
     exports: Map<string, Symbol>
+    scope: SemanticScope
+    programs: ProgramSymbol[]
 }
 
 export class SemanticScope {
@@ -63,9 +65,9 @@ export class SemanticScope {
         if (this.parent) return this.parent.find(name)
     }
 
-    set(s: Symbol): void {
-        if (this.symbols.has(s.name)) throw new Error(`symbol "${s.name}" already exists in this scope`)
-        this.symbols.set(s.name, s)
+    set(s: Symbol, name = s.name): void {
+        if (this.symbols.has(name)) throw new Error(`symbol "${name}" already exists in this scope`)
+        this.symbols.set(name, s)
     }
 
     toJSON() {

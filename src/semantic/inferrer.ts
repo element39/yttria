@@ -1,9 +1,9 @@
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, Identifier, NumberLiteral, PreUnaryExpression, ReturnExpression } from "../parser/ast"
-import { FunctionSymbol, ProgramSymbol, SemanticScope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
+import { BinaryExpression, Expression, ExpressionType, FunctionCall, Identifier, MemberAccess, NumberLiteral, PreUnaryExpression, ReturnExpression } from "../parser/ast"
+import { FunctionSymbol, ModuleSymbol, ProgramSymbol, SemanticScope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
 import { FloatType, IntType, TypeValue } from "./types"
 
 export class SemanticInferrer {
-    resolved: ProgramSymbol
+    resolvedModules: Map<string, ModuleSymbol>
     scope!: SemanticScope
 
     symbols: {
@@ -23,19 +23,30 @@ export class SemanticInferrer {
         BinaryExpression: this.inferBinaryExpression.bind(this),
         Identifier: this.inferIdentifier.bind(this),
         ReturnExpression: this.inferReturnExpression.bind(this),
-        FunctionCall: this.inferFunctionCall.bind(this)
+        FunctionCall: this.inferFunctionCall.bind(this),
+        MemberAccess: this.inferMemberAccess.bind(this)
     }
 
-    constructor(resolved: ProgramSymbol) {
-        this.resolved = resolved
+    constructor(resolvedModules: Map<string, ModuleSymbol>) {
+        this.resolvedModules = resolvedModules
     }
 
-    infer() {
-        for (const fn of this.resolved.functions) {
+    infer(): Map<string, ModuleSymbol> {
+        for (const module of this.resolvedModules.values()) {
+            for (const program of module.programs) {
+                this.inferProgram(program)
+            }
+        }
+
+        return this.resolvedModules
+    }
+
+    inferProgram(program: ProgramSymbol): ProgramSymbol {
+        for (const fn of program.functions) {
             this.symbols[fn.kind]?.(fn)
         }
 
-        return this.resolved
+        return program
     }
 
     inferFunction(s: Symbol): Symbol {
@@ -197,23 +208,107 @@ export class SemanticInferrer {
     }
 
     inferFunctionCall(e: Expression): TypeValue {
-        const c = e as FunctionCall
-        const callee = c.callee as Identifier
+        const c = e as FunctionCall;
 
-        const symbol = this.scope.find(callee.value)
+        let fn: FunctionSymbol;
 
-        if (!symbol) throw new Error(`unknown function "${callee.value}"`)
+        if (c.callee.type === "Identifier") {
+            const name = (c.callee as Identifier).value;
+            const symbol = this.scope.find(name);
 
-        if (symbol.kind !== "function") throw new Error(`"${callee.value}" is not a function`)
+            if (!symbol) {
+                throw new Error(`unknown function "${name}"`);
+            }
 
-        const fn = symbol as FunctionSymbol
+            if (symbol.kind !== "function") {
+                throw new Error(`"${name}" is not a function`);
+            }
 
-        if (!fn.returnType.type) {
-            throw new Error(`return type of "${callee.value}" is unresolved`)
+            fn = symbol as FunctionSymbol;
+        } else {
+            const member = this.expressions[c.callee.type]?.(c.callee);
+
+            if (!member) {
+                throw new Error(`cannot resolve function member access`);
+            }
+
+            const m = c.callee as MemberAccess;
+
+            if (m.object.type !== "Identifier") {
+                throw new Error(`unsupported member access target ${m.object.type}`);
+            }
+
+            const moduleName = (m.object as Identifier).value;
+            const moduleSymbol = this.scope.find(moduleName);
+
+            if (!moduleSymbol || moduleSymbol.kind !== "module") {
+                throw new Error(`unknown module "${moduleName}"`);
+            }
+
+            const exported = (moduleSymbol as ModuleSymbol).exports.get(
+                m.property.value
+            );
+
+            if (!exported || exported.kind !== "function") {
+                throw new Error(
+                    `"${m.property.value}" is not a function`
+                );
+            }
+
+            fn = exported as FunctionSymbol;
         }
 
-        e.inferredType = fn.returnType.type
-        return fn.returnType.type
+        if (!fn.returnType.type) {
+            throw new Error(`return type of "${fn.name}" is unresolved`);
+        }
+
+        e.inferredType = fn.returnType.type;
+        return fn.returnType.type;
+    }
+
+    inferMemberAccess(e: Expression): TypeValue {
+        const m = e as MemberAccess;
+
+        if (m.object.type !== "Identifier") {
+            throw new Error(`unsupported member access target ${m.object.type}`);
+        }
+
+        const moduleName = (m.object as Identifier).value;
+        const symbol = this.scope.find(moduleName);
+
+        if (!symbol) {
+            throw new Error(`unknown module "${moduleName}"`);
+        }
+
+        if (symbol.kind !== "module") {
+            throw new Error(`"${moduleName}" is not a module`);
+        }
+
+        const module = symbol as ModuleSymbol;
+        const member = module.exports.get(m.property.value);
+
+        if (!member) {
+            throw new Error(
+                `"${m.property.value}" is not exported by "${module.name}"`
+            );
+        }
+
+        if (member.kind !== "function") {
+            throw new Error(
+                `"${m.property.value}" is not a function`
+            );
+        }
+
+        const fn = member as FunctionSymbol;
+
+        if (!fn.returnType.type) {
+            throw new Error(
+                `return type of "${m.property.value}" is unresolved`
+            );
+        }
+
+        e.inferredType = fn.returnType.type;
+        return fn.returnType.type;
     }
 
     inferPreUnaryExpression(e: Expression): TypeValue {

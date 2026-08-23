@@ -1,129 +1,126 @@
-import { rmSync } from "fs"
+import { mkdirSync, rmSync } from "fs"
 import { platform } from "os"
 import { Codegen } from "./src/gen/llvm"
-import { Lexer } from "./src/lexer"
-import { Parser } from "./src/parser"
+import { ModuleLoader } from "./src/module/loader"
 import { SemanticAnalyser } from "./src/semantic/analyser"
 import { SemanticChecker } from "./src/semantic/checker"
 import { SemanticInferrer } from "./src/semantic/inferrer"
 import { SemanticResolver } from "./src/semantic/resolver"
+import { ModuleSymbol } from "./src/semantic/symbols"
 
 rmSync("./out", { recursive: true, force: true })
 
-// error driven development right here
-// const program = `
-// use std/io
-
-// pub fn main() {
-//     io.println("hi")
-// }
-// `.trim()
-
-// const program = `
-// fn main() -> int {
-//     let x := 2
-
-//     switch (x) {
-//         0 -> {
-//             return 22
-//         }
-//         1 -> {
-//             return 12
-//         }
-//         2 -> {
-//             return 3
-//         }
-//         default -> {
-//             return 7
-//         }
-//     }
-        
-//     return 1
-// }
-// `.trim()
-
 const program = `
-extern fn putchar(c: int) -> int
+use std/io as alias
 
 pub fn main() -> int {
-    putchar(72)
-
-    return 2
+    return alias.putc(72)
 }
 `.trim()
 
 const start = performance.now()
 
-const l = new Lexer(program)
-const t = l.lex()
-const lexerTime = performance.now()
-await Bun.write("out/tok.json", JSON.stringify(t, null, 2))
+const ml = new ModuleLoader()
+const modules = await ml.load(".", "main.yt", program)
 
-console.log(`lexed ${t.length} tokens in ${(lexerTime - start).toFixed(3)}ms`)
+const modTime = performance.now()
 
-const p = new Parser(t)
-const ast = p.parse()
-await Bun.write("out/ast.json", JSON.stringify(ast, null, 2))
-const astTime = performance.now()
+console.log(`loaded ${modules.size} module(s)`)
 
-console.log(`parsed ${t.length} tokens in ${(astTime - lexerTime).toFixed(3)}ms, generated ${ast.body.length} root node(s)`)
+const analyzedModules = new Map<string, ModuleSymbol>()
 
-const sa = new SemanticAnalyser(ast)
-const analyzed = sa.analyse()
+for (const [name, files] of modules) {
+    const sa = new SemanticAnalyser(files, name)
+    const analyzed = sa.analyse()
 
-await Bun.write("out/semantic/analyzed.json", JSON.stringify(analyzed, null, 2))
+    analyzedModules.set(name, analyzed)
+    await Bun.write(`out/semantic/${name}.analyzed.json`, JSON.stringify(analyzed, null, 2))
+}
 
-const sr = new SemanticResolver(analyzed)
-const resolved = sr.resolve()
+const analyzedTime = performance.now()
 
-await Bun.write("out/semantic/resolved.json", JSON.stringify(resolved, null, 2))
+console.log(`semantic analysis done in ${(analyzedTime - modTime).toFixed(3)}ms`)
 
-const si = new SemanticInferrer(resolved)
-const inferred = si.infer()
+const sr = new SemanticResolver(analyzedModules)
+const resolvedModules = sr.resolve()
 
-await Bun.write("out/semantic/inferred.json", JSON.stringify(inferred, null, 2))
+await Bun.write("out/semantic/resolved.json", JSON.stringify(resolvedModules, null, 2))
 
-const sc = new SemanticChecker(inferred)
-const symbol = sc.check()
+const resolvedTime = performance.now()
+console.log(`semantic resolution done in ${(resolvedTime - analyzedTime).toFixed(3)}ms`)
+
+const si = new SemanticInferrer(resolvedModules)
+const inferredModules = si.infer()
+
+await Bun.write("out/semantic/inferred.json", JSON.stringify(inferredModules, null, 2))
+
+const inferredTime = performance.now()
+console.log(`type inference done in ${(inferredTime - resolvedTime).toFixed(3)}ms`)
+
+const sc = new SemanticChecker(inferredModules)
+const checkedModules = sc.check()
+
+await Bun.write("out/semantic/checked.json", JSON.stringify(checkedModules, null, 2))
 
 const semanticTime = performance.now()
+console.log(`semantic checking done in ${(semanticTime - inferredTime).toFixed(3)}ms`)
 
-console.log(`semantic analysis done in ${(semanticTime - astTime).toFixed(3)}ms`)
+const main = checkedModules.get("main")
+if (!main) throw new Error("entry module not found")
 
-const cg = new Codegen("main", ast, symbol)
-const ll = cg.gen()
+for (const [name, module] of checkedModules) {
+    const cg = new Codegen(name, module)
+    const ll = cg.gen()
 
-await Bun.write("out/out.ll", ll)
+    await Bun.write(`out/llvm/${name}.ll`, ll)
+}
 
 const codegenTime = performance.now()
 
-console.log(`codegen done in ${(codegenTime - semanticTime).toFixed(3)}ms`)
+console.log(`codegen done in ${(codegenTime - semanticTime).toFixed(3)}ms\n`)
 
-// Bun.$`clang -c out/out.ll -o out/out.o`
-// platform() === "win32"
-//     ? Bun.$`clang out/out.o -o out/out.exe`
-//     : Bun.$`clang out/out.o -o out/out`
+const lls = [...checkedModules.keys()].map(
+    name => `out/llvm/${name}.ll`
+);
+
+const objs = [...checkedModules.keys()].map(
+    name => `out/obj/${name}.o`
+);
+
+for (const obj of objs) {
+    const parts = obj.split("/");
+    parts.pop();
+
+    mkdirSync(parts.join("/"), { recursive: true });
+}
+
+for (const [i, obj] of objs.entries()) {
+    Bun.spawnSync({
+        cmd: ["clang", "-c", lls[i], "-o", obj],
+        stdout: "inherit",
+        stderr: "inherit"
+    });
+}
+
+const output = platform() === "win32"
+    ? "out/out.exe"
+    : "out/out";
 
 Bun.spawnSync({
-    cmd: ["clang", "-c", "out/out.ll", "-o", "out/out.o"],
+    cmd: ["clang", ...objs, "-o", output],
     stdout: "inherit",
     stderr: "inherit"
-})
+});
 
-Bun.spawnSync({
-    cmd: platform() === "win32" ? ["clang", "out/out.o", "-o", "out/out.exe"] : ["clang", "out/out.o", "-o", "out/out"],
-    stdout: "inherit",
-    stderr: "inherit"
-})
+const linkTime = performance.now();
 
-const linkTime = performance.now()
-console.log(`compiled in ${(performance.now() - codegenTime).toFixed(3)}ms`)
-console.log(`total time: ${(linkTime - start).toFixed(3)}ms\n`)
+console.log(`\ncompiled in ${(linkTime - codegenTime).toFixed(3)}ms`);
+console.log(`total time: ${(linkTime - start).toFixed(3)}ms\n\n`);
 
 const process = Bun.spawnSync({
-    cmd: ["./out/out"],
+    cmd: [output],
     stdout: "inherit",
     stderr: "inherit"
-})
+});
 
-console.log(`\n\nprogram exited with code ${process.exitCode}`)
+console.log(`\n\n\nprogram exited with code ${process.exitCode}`);

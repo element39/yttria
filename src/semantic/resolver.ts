@@ -1,24 +1,54 @@
-import { FunctionSymbol, ProgramSymbol, Symbol, SymbolKind, VariableSymbol } from "./symbols"
+import { ImportExpression } from "../parser/ast"
+import { FunctionSymbol, ModuleSymbol, Symbol, SymbolKind, VariableSymbol } from "./symbols"
 import { BoolType, FloatType, IntType, TypeHolder, TypeValue } from "./types"
 
 export class SemanticResolver {
-    analyzed: ProgramSymbol
+    analyzedModules: Map<string, ModuleSymbol>
 
-    table: { [key in SymbolKind]?: (s: Symbol) => Symbol } = {
+    table: {
+        [key in SymbolKind]?: (s: Symbol) => Symbol
+    } = {
         function: this.resolveFunction.bind(this),
         variable: this.resolveVariable.bind(this)
     }
 
-    constructor(analyzed: ProgramSymbol) {
-        this.analyzed = analyzed
+    constructor(modules: Map<string, ModuleSymbol>) {
+        this.analyzedModules = modules
     }
-    
-    resolve() {
-        for (const fn of this.analyzed.functions) {
-            this.table[fn.kind]?.(fn)
+
+    resolve(): Map<string, ModuleSymbol> {
+        for (const module of this.analyzedModules.values()) {
+            this.resolveModule(module)
         }
 
-        return this.analyzed
+        return this.analyzedModules
+    }
+
+    resolveModule(module: ModuleSymbol): void {
+        for (const program of module.programs) {
+            for (const expression of program.expression.body) {
+                if (expression.type !== "ImportExpression") continue
+
+                const imp = expression as ImportExpression
+                const imported = this.analyzedModules.get(imp.path)
+
+                if (!imported) {
+                    throw new Error(`module "${imp.path}" not found`)
+                }
+
+                const name =
+                    imp.alias ??
+                    imp.path.split("/").pop()!
+
+                module.scope.set(imported, name)
+            }
+        }
+
+        for (const program of module.programs) {
+            for (const fn of program.functions) {
+                this.table[fn.kind]?.(fn)
+            }
+        }
     }
 
     resolveFunction(s: Symbol): Symbol {
@@ -100,4 +130,4 @@ export class SemanticResolver {
 
         return a.kind === b.kind
     }
-}
+}   

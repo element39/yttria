@@ -18,8 +18,8 @@ current version: `v0.0.3.alpha-1`
 
   lexer             100%     █████████████      practically complete
   parser            100%     █████████████      practically complete
-  typechecker       85%      ██████████▓░░      complete soon
-  codegen           60%      ███████▓░░░░░      actively being developed
+  typechecker       90%      ███████████▓░      complete soon
+  codegen           70%      █████████▓░░░      actively being developed
 ```
 
 ### std
@@ -44,4 +44,4 @@ current version: `v0.0.3.alpha-1`
 ## status report
 > last updated: 23/08/2026 (dd/mm/yyyy)
 
-yttria is still in early development; lexer and parser are actually finished now, type system is in its final stages of development & codegen is now working e2e. std library is still in the planning phase, and no developer tooling have been started yet. expect a lot of breaking changes in the future.
+yttria is still in early development; lexer and parser are actually finished now, type system is in its final stages of development & codegen is now working e2e. the module system now works & standard library is being developed and can now expose yttria wrappers around external C functions. the remaining parts of the standard library are still in the planning phase, and no developer tooling has been started yet. expect a lot of breaking changes in the future.

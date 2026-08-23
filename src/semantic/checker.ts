@@ -1,28 +1,33 @@
-import {
-    Expression,
-    ExpressionType,
-    ReturnExpression,
-} from "../parser/ast"
-import { FunctionSymbol, ProgramSymbol } from "./symbols"
+import { Expression, ExpressionType, ReturnExpression } from "../parser/ast"
+import { FunctionSymbol, ModuleSymbol, ProgramSymbol } from "./symbols"
 import { TypeValue } from "./types"
 
 export class SemanticChecker {
-    inferred: ProgramSymbol
+    inferredModules: Map<string, ModuleSymbol>
 
     expressions: { [key in ExpressionType]?: (e: Expression, expected?: TypeValue) => void } = {
         ReturnExpression: this.checkReturnExpression.bind(this),
     }
 
-    constructor(inferred: ProgramSymbol) {
-        this.inferred = inferred
+    constructor(inferredModules: Map<string, ModuleSymbol>) {
+        this.inferredModules = inferredModules
     }
 
-    check() {
-        for (const fn of this.inferred.functions) {
+    check(): Map<string, ModuleSymbol> {
+        for (const module of this.inferredModules.values()) {
+            for (const program of module.programs) {
+                this.checkProgram(program)
+            }
+        }
+        return this.inferredModules
+    }
+
+    checkProgram(program: ProgramSymbol): ProgramSymbol {
+        for (const fn of program.functions) {
             this.checkFunction(fn)
         }
 
-        return this.inferred
+        return program
     }
 
     checkFunction(fn: FunctionSymbol): void {

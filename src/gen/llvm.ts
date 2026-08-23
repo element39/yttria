@@ -1,12 +1,12 @@
 import { BasicBlock, Func, FunctionType, Linkage, MemoryValue, Type, Value } from "../bindings";
-import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, VariableAssignment, VariableDeclaration } from "../parser/ast";
-import { ProgramSymbol } from "../semantic/symbols";
+import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ReturnExpression, VariableAssignment, VariableDeclaration } from "../parser/ast";
+import { FunctionSymbol, ModuleSymbol } from "../semantic/symbols";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
     private name: string;
-    private ast: ProgramExpression;
-    private symbol: ProgramSymbol;
+    private module: ModuleSymbol;
+
     private h: LLVMHelper;
     private scope: CodegenScope = new CodegenScope();
 
@@ -32,10 +32,9 @@ export class Codegen {
 
     types: { [key: string]: Type }
 
-    constructor(name: string, ast: ProgramExpression, symbol: ProgramSymbol) {
+    constructor(name: string, module: ModuleSymbol) {
         this.name = name;
-        this.ast = ast;
-        this.symbol = symbol;
+        this.module = module;
         this.h = new LLVMHelper(name);
 
         this.types = {
@@ -56,15 +55,15 @@ export class Codegen {
     }
 
     gen() {
-        for (const e of this.ast.body) {
-            if (e.type === "FunctionDeclaration") {
-                this.declareFunction(e as FunctionDeclaration);
+        for (const program of this.module.programs) {
+            for (const fn of program.functions) {
+                this.declareFunction(fn.expression);
             }
         }
 
-        for (const e of this.ast.body) {
-            if (e.type === "FunctionDeclaration") {
-                this.genFunctionBody(e as FunctionDeclaration);
+        for (const program of this.module.programs) {
+            for (const fn of program.functions) {
+                this.genFunctionBody(fn.expression);
             }
         }
 
@@ -74,12 +73,64 @@ export class Codegen {
     genFunctionCall(e: Expression) {
         const c = e as FunctionCall;
 
-        const fn = this.scope.getFunction((c.callee as Identifier).value);
-        if (!fn) throw new Error(`function not found for ${c.callee.type}`);
+        let fn: Func | undefined;
+
+        if (c.callee.type === "Identifier") {
+            const name = (c.callee as Identifier).value;
+            fn = this.scope.getFunction(name);
+        } else if (c.callee.type === "MemberAccess") {
+            const m = c.callee as MemberAccess;
+
+            if (m.object.type !== "Identifier") {
+                throw new Error(`unsupported member access target ${m.object.type}`);
+            }
+
+            const moduleName = (m.object as Identifier).value;
+            const moduleSymbol = this.module.scope.find(moduleName) as ModuleSymbol;
+
+            if (!moduleSymbol || moduleSymbol.kind !== "module") {
+                throw new Error(`module "${moduleName}" not found`);
+            }
+
+            const exported = moduleSymbol.exports.get(m.property.value);
+
+            if (!exported || exported.kind !== "function") {
+                throw new Error(`function "${m.property.value}" not found in module "${moduleSymbol.name}"`);
+            }
+
+            const symbol = exported as FunctionSymbol;
+
+            if (!symbol.returnType.type) {
+                throw new Error(`return type of "${symbol.name}" is unresolved`);
+            }
+
+            const fnType = new FunctionType(
+                symbol.params.map(p => this.types[p.typeHolder.type!.kind]),
+                this.types[symbol.returnType.type.kind],
+                false
+            );
+
+            fn = this.h.declareFn(
+                this.mangle(moduleSymbol.name, symbol.name),
+                fnType,
+                {
+                    linkage: Linkage.External,
+                    extern: true
+                }
+            );
+        }
+
+        if (!fn) {
+            throw new Error(`function not found for ${c.callee.type}`);
+        }
 
         const args = c.args.map(arg => {
             const v = this.table[arg.type]?.(arg);
-            if (!v || !(v instanceof Value)) throw new Error(`failed to generate argument for ${arg.type}`);
+
+            if (!v || !(v instanceof Value)) {
+                throw new Error(`failed to generate argument for ${arg.type}`);
+            }
+
             return v;
         });
 
@@ -87,9 +138,13 @@ export class Codegen {
     }
 
     declareFunction(f: FunctionDeclaration) {
-        const symbol = this.symbol.functions.find(
-            fn => fn.name === f.name.value
-        );
+        let symbol: FunctionSymbol | undefined
+
+        for (const program of this.module.programs) {
+            symbol = program.functions.find(fn => fn.name === f.name.value)
+
+            if (symbol) break;
+        }
 
         if (!symbol) {
             throw new Error(`symbol not found for ${f.name.value}`);
@@ -108,7 +163,9 @@ export class Codegen {
         );
 
         const fn = this.h.declareFn(
-            f.name.value,
+            f.modifiers.includes("extern")
+                ? f.name.value
+                : this.mangle(this.name, f.name.value),
             fnt,
             {
                 linkage: f.modifiers.includes("extern") || f.modifiers.includes("pub")
@@ -398,6 +455,11 @@ export class Codegen {
         this.h.builder.condBr(cond, ifBlock, alternateBlock ?? afterBlock);
 
         this.h.builder.insertInto(afterBlock);
+    }
+
+    mangle(module: string, name: string) {
+        if (module === "main" && name === "main") return "main";
+        return `yt_${module.replaceAll("/", "_")}_${name}`;
     }
 }
 

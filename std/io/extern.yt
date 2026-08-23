@@ -1,0 +1,1 @@
+extern fn putchar(c: int) -> int
