@@ -1,6 +1,6 @@
 import { ImportExpression } from "../parser/ast"
 import { FunctionSymbol, ModuleSymbol, Symbol, SymbolKind, VariableSymbol } from "./symbols"
-import { BoolType, FloatType, IntType, TypeHolder, TypeValue } from "./types"
+import { TypeHolder, TypeValue } from "./types"
 
 export class SemanticResolver {
     analyzedModules: Map<string, ModuleSymbol>
@@ -91,24 +91,64 @@ export class SemanticResolver {
     }
 
     resolveType(type: TypeHolder, name: string): void {
+        if (name.startsWith("i") || name === "int") {
+            type.type = {
+                kind: "int",
+                size: name === "int" ? 32 : parseInt(name.slice(1), 10) as 8 | 16 | 32 | 64
+            }
+            return
+        }
+
         switch (name) {
-            case "int":
+            case "string":
                 type.type = {
-                    kind: "int",
-                    size: 32
-                } as IntType
+                    kind: "string"
+                }
                 break
+            // case "i8":
+            //     type.type = {
+            //         kind: "int",
+            //         size: 8
+            //     }
+            //     break
+
+            // case "i16":
+            //     type.type = {
+            //         kind: "int",
+            //         size: 16
+            //     }
+            //     break
+            
+            // case "int":
+            // case "i32":
+            //     type.type = {
+            //         kind: "int",
+            //         size: 32
+            //     }
+            //     break
+
+            // case "i64":
+            //     type.type = {
+            //         kind: "int",
+            //         size: 64
+            //     }
+            //     break
 
             case "float":
                 type.type = {
                     kind: "float"
-                } as FloatType
+                }
                 break
 
             case "bool":
                 type.type = {
                     kind: "bool"
-                } as BoolType
+                }
+                break
+            case "any":
+                type.type = {
+                    kind: "any"
+                }
                 break
 
             default:
@@ -124,10 +164,13 @@ export class SemanticResolver {
         return type.type
     }
 
-    equal(ah: TypeHolder, bh: TypeHolder): boolean {
+    equals(ah: TypeHolder, bh: TypeHolder): boolean {
         const a = this.get(ah)
         const b = this.get(bh)
 
-        return a.kind === b.kind
+        if (a.kind !== b.kind) return false
+        if (a.kind === "int" && b.kind === "int") return (a.size ?? 32) === (b.size ?? 32)
+
+        return true
     }
 }   

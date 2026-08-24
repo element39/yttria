@@ -82,6 +82,7 @@ export type FunctionParam = {
     type: "FunctionParam"
     name: Identifier
     paramType: Identifier
+    variadic: boolean
 }
 
 export type IfExpression = Expression & {

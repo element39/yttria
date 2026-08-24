@@ -11,10 +11,13 @@ import { ModuleSymbol } from "./src/semantic/symbols"
 rmSync("./out", { recursive: true, force: true })
 
 const program = `
-use std/io as alias
+use std/io
 
-pub fn main() -> int {
-    return alias.putc(72)
+pub fn main() {
+    io.printf("x=%d\n", 1337)
+    io.println("test")
+    
+    return 0
 }
 `.trim()
 
@@ -115,7 +118,7 @@ Bun.spawnSync({
 const linkTime = performance.now();
 
 console.log(`\ncompiled in ${(linkTime - codegenTime).toFixed(3)}ms`);
-console.log(`total time: ${(linkTime - start).toFixed(3)}ms\n\n`);
+console.log(`total time: ${(linkTime - start).toFixed(3)}ms\n\n${"-".repeat(40)}\n\n`);
 
 const process = Bun.spawnSync({
     cmd: [output],
@@ -123,4 +126,4 @@ const process = Bun.spawnSync({
     stderr: "inherit"
 });
 
-console.log(`\n\n\nprogram exited with code ${process.exitCode}`);
+console.log(`\n\n${"-".repeat(40)}\n\nprogram exited with code ${process.exitCode}`);

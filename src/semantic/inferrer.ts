@@ -18,6 +18,7 @@ export class SemanticInferrer {
     } = {
         NumberLiteral: this.inferNumberLiteral.bind(this),
         BooleanLiteral: this.inferBooleanLiteral.bind(this),
+        StringLiteral: this.inferStringLiteral.bind(this),
         PreUnaryExpression: this.inferPreUnaryExpression.bind(this),
         PostUnaryExpression: this.inferPostUnaryExpression.bind(this),
         BinaryExpression: this.inferBinaryExpression.bind(this),
@@ -59,14 +60,16 @@ export class SemanticInferrer {
         }
 
         for (const expression of fn.expression.body) {
-            if (expression.type === "ReturnExpression") {
-                const type = this.expressions[expression.type]?.(expression)
+            const type = this.expressions[expression.type]?.(expression)
 
+            if (expression.type === "ReturnExpression") {
                 if (!type) {
                     throw new Error(`cannot infer return type`)
                 }
 
-                if (!fn.returnType.type) fn.returnType.type = type
+                if (!fn.returnType.type) {
+                    fn.returnType.type = type
+                }
             }
         }
 
@@ -78,10 +81,9 @@ export class SemanticInferrer {
     inferVariable(s: Symbol): Symbol {
         const v = s as VariableSymbol
 
-        if (
-            v.expression.type !== "VariableDeclaration" ||
-            v.expression.typeAnnotation
-        ) return v
+        if (v.expression.type !== "VariableDeclaration") {
+            return v
+        }
 
         const type = this.expressions[v.expression.value.type]?.(
             v.expression.value
@@ -93,7 +95,9 @@ export class SemanticInferrer {
             )
         }
 
-        v.typeHolder.type = type
+        if (!v.expression.typeAnnotation) {
+            v.typeHolder.type = type
+        }
 
         return v
     }
@@ -188,7 +192,6 @@ export class SemanticInferrer {
         const type: TypeValue = Number.isInteger(n.value)
             ? {
                 kind: "int",
-                size: 32
             } as IntType
             : {
                 kind: "float"
@@ -207,63 +210,95 @@ export class SemanticInferrer {
         return type
     }
 
-    inferFunctionCall(e: Expression): TypeValue {
-        const c = e as FunctionCall;
+    inferStringLiteral(e: Expression): TypeValue {
+        const type: TypeValue = {
+            kind: "string"
+        }
 
-        let fn: FunctionSymbol;
+        e.inferredType = type
+        return type
+    }
+
+    inferFunctionCall(e: Expression): TypeValue {
+        const c = e as FunctionCall
+
+        let fn: FunctionSymbol
 
         if (c.callee.type === "Identifier") {
-            const name = (c.callee as Identifier).value;
-            const symbol = this.scope.find(name);
+            const name = (c.callee as Identifier).value
+            const symbol = this.scope.find(name)
 
             if (!symbol) {
-                throw new Error(`unknown function "${name}"`);
+                throw new Error(`unknown function "${name}"`)
             }
 
             if (symbol.kind !== "function") {
-                throw new Error(`"${name}" is not a function`);
+                throw new Error(`"${name}" is not a function`)
             }
 
-            fn = symbol as FunctionSymbol;
+            fn = symbol as FunctionSymbol
         } else {
-            const member = this.expressions[c.callee.type]?.(c.callee);
-
-            if (!member) {
-                throw new Error(`cannot resolve function member access`);
-            }
-
-            const m = c.callee as MemberAccess;
+            const m = c.callee as MemberAccess
 
             if (m.object.type !== "Identifier") {
-                throw new Error(`unsupported member access target ${m.object.type}`);
+                throw new Error(
+                    `unsupported member access target ${m.object.type}`
+                )
             }
 
-            const moduleName = (m.object as Identifier).value;
-            const moduleSymbol = this.scope.find(moduleName);
+            const moduleName = (m.object as Identifier).value
+            const symbol = this.scope.find(moduleName)
 
-            if (!moduleSymbol || moduleSymbol.kind !== "module") {
-                throw new Error(`unknown module "${moduleName}"`);
+            if (!symbol) {
+                throw new Error(`unknown module "${moduleName}"`)
             }
 
-            const exported = (moduleSymbol as ModuleSymbol).exports.get(
-                m.property.value
-            );
+            if (symbol.kind !== "module") {
+                throw new Error(`"${moduleName}" is not a module`)
+            }
 
-            if (!exported || exported.kind !== "function") {
+            const module = symbol as ModuleSymbol
+            const exported = module.exports.get(m.property.value)
+
+            if (!exported) {
+                throw new Error(
+                    `"${m.property.value}" is not exported by "${module.name}"`
+                )
+            }
+
+            if (exported.kind !== "function") {
                 throw new Error(
                     `"${m.property.value}" is not a function`
-                );
+                )
             }
 
-            fn = exported as FunctionSymbol;
+            fn = exported as FunctionSymbol
+        }
+
+        for (const arg of c.args) {
+            const type = this.expressions[arg.type]?.(arg)
+
+            if (!type) {
+                throw new Error(
+                    `cannot infer argument of type ${arg.type}`
+                )
+            }
         }
 
         if (!fn.returnType.type) {
-            throw new Error(`return type of "${fn.name}" is unresolved`);
+            const currentScope = this.scope;
+            this.inferFunction(fn);
+            this.scope = currentScope;
         }
 
-        e.inferredType = fn.returnType.type;
-        return fn.returnType.type;
+        if (!fn.returnType.type) { // ugh hate u typescript
+            throw new Error(
+                `could not infer return type of "${fn.name}"`
+            )
+        }
+
+        e.inferredType = fn.returnType.type
+        return fn.returnType.type
     }
 
     inferMemberAccess(e: Expression): TypeValue {

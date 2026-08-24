@@ -1,1 +1,2 @@
-extern fn putchar(c: int) -> int
+pub extern fn printf(fmt: string, ...args: any) -> int
+pub extern fn puts(s: string) -> int

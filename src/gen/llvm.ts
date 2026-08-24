@@ -1,6 +1,7 @@
 import { BasicBlock, Func, FunctionType, Linkage, MemoryValue, Type, Value } from "../bindings";
-import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ReturnExpression, VariableAssignment, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ReturnExpression, StringLiteral, VariableAssignment, VariableDeclaration } from "../parser/ast";
 import { FunctionSymbol, ModuleSymbol } from "../semantic/symbols";
+import { TypeValue } from "../semantic/types";
 import { LLVMHelper } from "./helper";
 
 export class Codegen {
@@ -20,6 +21,7 @@ export class Codegen {
 
         NumberLiteral: this.genNumberLiteral.bind(this),
         BooleanLiteral: this.genBooleanLiteral.bind(this),
+        StringLiteral: this.genStringLiteral.bind(this),
 
         PreUnaryExpression: this.genPreUnaryExpression.bind(this),
         PostUnaryExpression: this.genPostUnaryExpression.bind(this),
@@ -104,15 +106,31 @@ export class Codegen {
                 throw new Error(`return type of "${symbol.name}" is unresolved`);
             }
 
-            const fnType = new FunctionType(
-                symbol.params.map(p => this.types[p.typeHolder.type!.kind]),
-                this.types[symbol.returnType.type.kind],
-                false
+            const variadic = symbol.expression.params.at(-1)?.variadic ?? false;
+
+            const params = (
+                variadic
+                    ? symbol.params.slice(0, -1)
+                    : symbol.params
+            ).map(param => {
+                if (!param.typeHolder.type) {
+                    throw new Error(`type of parameter "${param.name}" is unresolved`);
+                }
+
+                return this.toLLVMType(param.typeHolder.type);
+            });
+
+            const fnt = new FunctionType(
+                params,
+                this.toLLVMType(symbol.returnType.type),
+                variadic
             );
 
             fn = this.h.declareFn(
-                this.mangle(moduleSymbol.name, symbol.name),
-                fnType,
+                symbol.expression.modifiers.includes("extern")
+                    ? symbol.name
+                    : this.mangle(moduleSymbol.name, symbol.name),
+                fnt,
                 {
                     linkage: Linkage.External,
                     extern: true
@@ -154,13 +172,35 @@ export class Codegen {
             throw new Error(`return type not found for ${f.name.value}`);
         }
 
-        const ret = this.types[symbol.returnType.type.kind];
+        const ret = this.toLLVMType(symbol.returnType.type);
+
+        const variadic = f.params.at(-1)?.variadic ?? false;
+
+        const params = (
+            variadic
+                ? symbol.params.slice(0, -1)
+                : symbol.params
+        ).map(param => {
+            if (!param.typeHolder.type) {
+                throw new Error(
+                    `type of parameter "${param.name}" is unresolved`
+                );
+            }
+
+            if (param.typeHolder.type.kind === "any") {
+                throw new Error(
+                    `parameter "${param.name}" has invalid type "any"`
+                );
+            }
+
+            return this.toLLVMType(param.typeHolder.type);
+        });
 
         const fnt = new FunctionType(
-            f.params.map(p => this.types[p.paramType.value]),
+            params,
             ret,
-            false
-        );
+            variadic
+        )
 
         const fn = this.h.declareFn(
             f.modifiers.includes("extern")
@@ -270,6 +310,14 @@ export class Codegen {
     genBooleanLiteral(e: Expression) {
         const b = e as BooleanLiteral;
         return Value.constInt(this.types["bool"], b.value ? 1 : 0);
+    }
+
+    genStringLiteral(e: Expression) {
+        const s = e as StringLiteral;
+        return this.h.mod.addGlobalString(
+            s.value,
+            "str"
+        );
     }
 
     genPreUnaryExpression(e: Expression) {
@@ -455,6 +503,21 @@ export class Codegen {
         this.h.builder.condBr(cond, ifBlock, alternateBlock ?? afterBlock);
 
         this.h.builder.insertInto(afterBlock);
+    }
+
+    toLLVMType(type: TypeValue): Type {
+        switch (type.kind) {
+            case "int":
+                return this.types[`i${type.size ?? 32}`]
+            case "float":
+                return this.types["float"]
+            case "bool":
+                return this.types["bool"]
+            case "string":
+                return this.types["string"]
+            case "any":
+                throw new Error(`cannot lower "any" to llvm type`)
+        }
     }
 
     mangle(module: string, name: string) {

@@ -1,24 +1,30 @@
-export type TypeKind =
-    | "int"
-    | "float"
-    | "bool"
-
-export type TypeValue = {
-    kind: TypeKind
+export type AnyType = {
+    kind: "any"
 }
 
-export type IntType = TypeValue & {
+export type IntType = {
     kind: "int"
-    size: 8 | 16 | 32 | 64
+    size?: 8 | 16 | 32 | 64
 }
 
-export type FloatType = TypeValue & {
+export type FloatType = {
     kind: "float"
 }
 
-export type BoolType = TypeValue & {
+export type BoolType = {
     kind: "bool"
 }
+
+export type StringType = {
+    kind: "string"
+}
+
+export type TypeValue =
+    | IntType
+    | FloatType
+    | BoolType
+    | StringType
+    | AnyType
 
 export type TypeHolder = {
     id: number

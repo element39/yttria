@@ -114,13 +114,27 @@ export class Lexer {
             }
 
             const two = char + this.peek()
+            const three = char + this.peek(1) + this.peek(2)
 
             // multi-char delimiters
+            if (MultiCharDelimiters.includes(three)) {
+                this.tokens.push({
+                    type: "Delimiter",
+                    literal: three
+                })
+
+                this.advance()
+                this.advance()
+
+                continue
+            }
+
             if (MultiCharDelimiters.includes(two)) {
                 this.tokens.push({
                     type: "Delimiter",
                     literal: two
                 })
+
                 this.advance()
                 continue
             }

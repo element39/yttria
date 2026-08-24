@@ -53,7 +53,7 @@ export const Modifiers = [
 export type Modifier = (typeof Modifiers)[number] // i didnt even know you could do this
 
 export const MultiCharDelimiters = [
-    ":="
+    ":=",
 ]
 
 export const SingleCharDelimiters = [

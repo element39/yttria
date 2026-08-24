@@ -79,8 +79,12 @@ export class ModuleLoader {
         const lexer = new Lexer(source);
         const tokens = lexer.lex();
 
+        Bun.write(`out/lexer/${moduleName}/${relative(this.root, filePath)}.tokens.json`, JSON.stringify(tokens, null, 2));
+
         const parser = new Parser(tokens);
         const ast = parser.parse();
+
+        Bun.write(`out/parser/${moduleName}/${relative(this.root, filePath)}.ast.json`, JSON.stringify(ast, null, 2));
 
         this.loaded.get(moduleName)!.push(ast);
 

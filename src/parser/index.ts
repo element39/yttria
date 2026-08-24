@@ -333,10 +333,29 @@ export class Parser {
         const params: FunctionParam[] = []
 
         if (this.peek(1).literal !== ")") {
-            while (this.peek().literal !== ")" && this.peek().type !== "EOF") {
+            this.advance()
+
+            while (
+                this.peek().literal !== ")" &&
+                this.peek().type !== "EOF"
+            ) {
+                let variadic = false
+
+                if (this.peek().literal === ".") {
+                    if (
+                        this.peek(1).literal !== "." ||
+                        this.peek(2).literal !== "."
+                    ) {
+                        throw new Error("expected '...' for variadic parameter")
+                    }
+
+                    this.advance(3)
+                    variadic = true
+                }
+
                 const name: Identifier = {
                     type: "Identifier",
-                    value: this.advance().literal
+                    value: this.peek().literal
                 }
 
                 this.advance()
@@ -350,52 +369,58 @@ export class Parser {
                     value: this.advance().literal
                 }
 
+                this.advance()
+
                 params.push({
                     type: "FunctionParam",
                     name,
-                    paramType: type
+                    paramType: type,
+                    variadic
                 })
+
+                if (variadic && this.peek().literal === ",") {
+                    throw new Error("variadic parameter must be last")
+                }
 
                 if (this.peek().literal === ",") {
                     this.advance()
+                    continue
                 }
 
-                this.advance()
+                if (this.peek().literal !== ")") {
+                    throw new Error("expected ',' or ')' after parameter")
+                }
             }
         } else {
+            // currently at "(" and next token is ")"
             this.advance()
         }
-        
-        this.advance()
-        
+
+        this.advance() // consume ")" and move to "->" or "{"
+
+        let returnType: Identifier | undefined;
         if (this.peek().literal === "->") {
-            const returnType: Identifier = {
+            returnType = {
                 type: "Identifier",
                 value: this.advance().literal
             }
 
             this.advance()
-            
-            let body: Expression[] = []
-            if (!modifiers.includes("extern")) body = this.parseBlock()
 
-            return {
-                type: "FunctionDeclaration",
-                name,
-                params,
-                body,
-                returnType,
-                modifiers
-            }
         }
 
-        const body: Expression[] = this.parseBlock()
+        let body: Expression[] = []
+
+        if (!modifiers.includes("extern")) {
+            body = this.parseBlock()
+        }
 
         return {
             type: "FunctionDeclaration",
             name,
             params,
             body,
+            returnType,
             modifiers
         }
     }
