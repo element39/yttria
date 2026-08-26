@@ -150,6 +150,11 @@ export class SemanticResolver {
                     kind: "any"
                 }
                 break
+            case "null":
+                type.type = {
+                    kind: "null"
+                }
+                break
 
             default:
                 throw new Error(`unknown type "${name}"`)

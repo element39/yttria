@@ -57,6 +57,8 @@ export class LLVMHelper {
         }
     ): Func {
         let func = this.mod.getFunction(name);
+        if (opts?.extern && func) return func;
+        
         if (func) throw new Error(`function ${name} already exists`);
 
         return this.mod.createFunction(

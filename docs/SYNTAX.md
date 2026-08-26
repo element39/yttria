@@ -50,7 +50,7 @@ cstr // utf8 string constant
 string // mutable heap string (hard alias to i8[])
 char // single utf8 character
 
-null absence of a value - also used as the language-level equivalent of voidncy
+null // yttria's unit type: represents a **value** AND a type that carries no data, similar to Kotlin's `Unit` or Rust's `()`
 
 // composite types
 ...

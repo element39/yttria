@@ -19,12 +19,17 @@ export type StringType = {
     kind: "string"
 }
 
+export type NullType = {
+    kind: "null"
+}
+
 export type TypeValue =
     | IntType
     | FloatType
     | BoolType
     | StringType
     | AnyType
+    | NullType
 
 export type TypeHolder = {
     id: number

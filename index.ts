@@ -14,9 +14,13 @@ const program = `
 use std/io
 
 pub fn main() {
-    io.printf("x=%d\n", 1337)
-    io.println("test")
-    
+    if (true) {
+        if (false) {
+            io.println("no")
+        } else {
+            io.println("yes")
+        }
+    }
     return 0
 }
 `.trim()
@@ -47,7 +51,10 @@ console.log(`semantic analysis done in ${(analyzedTime - modTime).toFixed(3)}ms`
 const sr = new SemanticResolver(analyzedModules)
 const resolvedModules = sr.resolve()
 
-await Bun.write("out/semantic/resolved.json", JSON.stringify(resolvedModules, null, 2))
+// await Bun.write("out/semantic/resolved.json", JSON.stringify(resolvedModules, null, 2))
+for (const [name, module] of resolvedModules) {
+    await Bun.write(`out/semantic/${name}.resolved.json`, JSON.stringify(module, null, 2))
+}
 
 const resolvedTime = performance.now()
 console.log(`semantic resolution done in ${(resolvedTime - analyzedTime).toFixed(3)}ms`)
@@ -55,7 +62,10 @@ console.log(`semantic resolution done in ${(resolvedTime - analyzedTime).toFixed
 const si = new SemanticInferrer(resolvedModules)
 const inferredModules = si.infer()
 
-await Bun.write("out/semantic/inferred.json", JSON.stringify(inferredModules, null, 2))
+// await Bun.write("out/semantic/inferred.json", JSON.stringify(inferredModules, null, 2))
+for (const [name, module] of inferredModules) {
+    await Bun.write(`out/semantic/${name}.inferred.json`, JSON.stringify(module, null, 2))
+}
 
 const inferredTime = performance.now()
 console.log(`type inference done in ${(inferredTime - resolvedTime).toFixed(3)}ms`)
@@ -63,7 +73,10 @@ console.log(`type inference done in ${(inferredTime - resolvedTime).toFixed(3)}m
 const sc = new SemanticChecker(inferredModules)
 const checkedModules = sc.check()
 
-await Bun.write("out/semantic/checked.json", JSON.stringify(checkedModules, null, 2))
+// await Bun.write("out/semantic/checked.json", JSON.stringify(checkedModules, null, 2))
+for (const [name, module] of checkedModules) {
+    await Bun.write(`out/semantic/${name}.checked.json`, JSON.stringify(module, null, 2))
+}
 
 const semanticTime = performance.now()
 console.log(`semantic checking done in ${(semanticTime - inferredTime).toFixed(3)}ms`)

@@ -24,6 +24,7 @@ import {
 	LLVMConstInt,
 	LLVMConstReal,
 	LLVMConstStringInContext,
+	LLVMConstStructInContext,
 	LLVMContextCreate,
 	LLVMCreateBuilderInContext,
 	LLVMDeleteBasicBlock,
@@ -48,6 +49,7 @@ import {
 	LLVMSetInitializer,
 	LLVMSetLinkage,
 	LLVMSetValueName2,
+	LLVMStructTypeInContext,
 	LLVMTypeOf,
 	LLVMVerifyFunction,
 	LLVMVerifyModule,
@@ -601,20 +603,27 @@ represents a type in llvm
 export class Type {
 	private ptr: Pointer;
 	private kind: string;
+	private ctx?: Context;
+
 	private bitWidth?: number;
 	private elementType?: Type;
+	private fields?: Type[];
 
-	private constructor(ptr: Pointer, kind: string, bitWidth?: number, elementType?: Type) {
+	private constructor(ptr: Pointer, kind: string, bitWidth?: number, elementType?: Type, fields?: Type[], ctx?: Context) {
         this.ptr = ptr;
         this.kind = kind;
+
+		if (ctx) this.ctx = ctx;
         if (bitWidth !== undefined) this.bitWidth = bitWidth;
         if (elementType) this.elementType = elementType;
+        if (fields) this.fields = fields;
     }
 
 	/**
 	create a Type from a raw pointer (internal use)
 	tries to infer kind/bitWidth for int/float/double/pointer/void
-	*/	static fromRaw(ptr: Pointer): Type {
+	*/
+	static fromRaw(ptr: Pointer): Type {
 		const typeKind = LLVMGetTypeKind(ptr);
 
 		enum LLVMTypeKind {
@@ -652,10 +661,11 @@ export class Type {
 				return new Type(ptr, "pointer");
 			case LLVMTypeKind.Integer:
 				const width = LLVMGetIntTypeWidth(ptr);
-				if (typeof width === 'number' && width > 0) {
-					return new Type(ptr, `int${width}`, width);
-				}
+				
+				if (typeof width === 'number' && width > 0) return new Type(ptr, `int${width}`, width);
 				return new Type(ptr, "int");
+			case LLVMTypeKind.Struct:
+    			return new Type(ptr, "struct");
 			default:
 				return new Type(ptr, "unknown");
 		}
@@ -665,36 +675,72 @@ export class Type {
 	 get i1 type
 	*/
 	static int1(context: Context): Type {
-		return new Type(LLVMInt1TypeInContext(context.handle), "int1", 1);
+		return new Type(
+			LLVMInt1TypeInContext(context.handle),
+			"int1",
+			1,
+			undefined,
+			undefined,
+			context
+		);
 	}
 
 	/**
 	 get i8 type
 	*/
 	static int8(context: Context): Type {
-		return new Type(LLVMInt8TypeInContext(context.handle), "int8", 8);
+		return new Type(
+			LLVMInt8TypeInContext(context.handle),
+			"int8",
+			8,
+			undefined,
+			undefined,
+			context
+		);
 	}
 
 	/**
 	 get i16 type
 	*/
 	static int16(context: Context): Type {
-		return new Type(LLVMInt16TypeInContext(context.handle), "int16", 16);
+		return new Type(
+			LLVMInt16TypeInContext(context.handle),
+			"int16",
+			16,
+			undefined,
+			undefined,
+			context
+		);
 	}
 
 	/**
 	 get i32 type
 	*/
 	static int32(context: Context): Type {
-		return new Type(LLVMInt32TypeInContext(context.handle), "int32", 32);
+		return new Type(
+			LLVMInt32TypeInContext(context.handle),
+			"int32",
+			32,
+			undefined,
+			undefined,
+			context
+		);
 	}
 
 	/**
 	 get i64 type
 	*/
-	static int64(context: Context): Type {
-		return new Type(LLVMInt64TypeInContext(context.handle), "int64", 64);
+		static int64(context: Context): Type {
+		return new Type(
+			LLVMInt64TypeInContext(context.handle),
+			"int64",
+			64,
+			undefined,
+			undefined,
+			context
+		);
 	}
+
 	/**
 	 get the bit width for integer types (returns undefined for non-integer types)
 	*/
@@ -706,21 +752,44 @@ export class Type {
 	 get float type
 	*/
 	static float(context: Context): Type {
-		return new Type(LLVMFloatTypeInContext(context.handle), "float");
+		return new Type(
+			LLVMFloatTypeInContext(context.handle),
+			"float",
+			undefined,
+			undefined,
+			undefined,
+			context
+		);
 	}
+
 
 	/**
 	 get double type
 	*/
 	static double(context: Context): Type {
-		return new Type(LLVMDoubleTypeInContext(context.handle), "double");
+		return new Type(
+			LLVMDoubleTypeInContext(context.handle),
+			"double",
+			undefined,
+			undefined,
+			undefined,
+			context
+		);
 	}
+
 
 	/**
 	 get void type
 	*/
 	static void(context: Context): Type {
-		return new Type(LLVMVoidTypeInContext(context.handle), "void");
+		return new Type(
+			LLVMVoidTypeInContext(context.handle),
+			"void",
+			undefined,
+			undefined,
+			undefined,
+			context
+		);
 	}
 
 	/**
@@ -729,13 +798,46 @@ export class Type {
 	 @param addressSpace address space
 	*/
 	static pointer(elementType: Type, addressSpace = 0): Type {
-        return new Type(LLVMPointerType(elementType.handle, addressSpace), "pointer", undefined, elementType);
-    }
+		return new Type(
+			LLVMPointerType(elementType.handle, addressSpace),
+			"pointer",
+			undefined,
+			elementType,
+			undefined,
+			elementType.context
+		);
+	}
+
+	static struct(context: Context, fields: Type[] = []): Type {
+		const buf = fields.length
+			? Buffer.allocUnsafe(fields.length * 8)
+			: Buffer.alloc(0);
+
+		for (let i = 0; i < fields.length; ++i) {
+			buf.writeBigUInt64LE(BigInt(fields[i].handle), i * 8);
+		}
+
+		return new Type(
+			LLVMStructTypeInContext(
+				context.handle,
+				buf,
+				fields.length,
+				false
+			),
+			"struct",
+			undefined,
+			undefined,
+			fields,
+			context
+		);
+	}
 
 	/**
 	 get the raw pointer
 	*/
 	get handle() { return this.ptr; }
+
+	get context() { return this.ctx; }
 
 	getElementType(): Type | undefined {
         return this.elementType;
@@ -777,6 +879,14 @@ export class Type {
 	*/
 	isVoid(): boolean {
 		return this.kind === "void";
+	}
+
+	isStruct(): boolean {
+		return this.kind === "struct";
+	}
+
+	getFields(): Type[] | undefined {
+		return this.fields;
 	}
 }
 
@@ -822,6 +932,32 @@ export class Value {
 	 */
 	static constFloat(type: Type, value: number): Value {
 		const ptr = LLVMConstReal(type.handle, value);
+		return new Value(ptr, type);
+	}
+
+
+	static constStruct(type: Type, fields: Value[] = []): Value {
+		const context = type.context;
+
+		if (!context) {
+			throw new Error("Cannot create struct constant: type has no LLVM context");
+		}
+
+		const buf = fields.length
+			? Buffer.allocUnsafe(fields.length * 8)
+			: Buffer.alloc(0);
+
+		for (let i = 0; i < fields.length; ++i) {
+			buf.writeBigUInt64LE(BigInt(fields[i].handle), i * 8);
+		}
+
+		const ptr = LLVMConstStructInContext(
+			context.handle,
+			buf,
+			fields.length,
+			false
+		);
+
 		return new Value(ptr, type);
 	}
 

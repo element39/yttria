@@ -11,7 +11,7 @@ export class Codegen {
     private h: LLVMHelper;
     private scope: CodegenScope = new CodegenScope();
 
-    private table: { [key in ExpressionType]?: (e: Expression) => Value | Func | void } = {
+    private table: { [key in ExpressionType]?: (e: Expression) => Value | Func | undefined } = {
         FunctionCall: this.genFunctionCall.bind(this),
         ReturnExpression: this.genReturnExpression.bind(this),
 
@@ -22,6 +22,7 @@ export class Codegen {
         NumberLiteral: this.genNumberLiteral.bind(this),
         BooleanLiteral: this.genBooleanLiteral.bind(this),
         StringLiteral: this.genStringLiteral.bind(this),
+        NullLiteral: this.genNullLiteral.bind(this),
 
         PreUnaryExpression: this.genPreUnaryExpression.bind(this),
         PostUnaryExpression: this.genPostUnaryExpression.bind(this),
@@ -51,7 +52,7 @@ export class Codegen {
             "string": Type.pointer(Type.int8(this.h.ctx)),
             "char": Type.int8(this.h.ctx),
 
-            "void": Type.void(this.h.ctx),
+            "null": Type.struct(this.h.ctx),
             "bool": Type.int1(this.h.ctx),
         }
     }
@@ -258,6 +259,15 @@ export class Codegen {
 
         for (const body of f.body) {
             this.table[body.type]?.(body);
+        }   
+
+        const currentBlock = this.h.builder.getInsertBlock();
+        if (currentBlock && !currentBlock.terminated) {
+            const ret = fn.type?.returnType;
+            if (!ret) throw new Error(`function "${f.name.value}" has no return type`);
+
+            if (ret.isStruct()) this.h.builder.ret(Value.constStruct(ret));
+            else throw new Error(`function "${f.name.value}" must return a value`);
         }
 
         this.scope = this.scope.pop();
@@ -318,6 +328,10 @@ export class Codegen {
             s.value,
             "str"
         );
+    }
+
+    genNullLiteral(e: Expression) {
+        return Value.constStruct(this.types["null"]);
     }
 
     genPreUnaryExpression(e: Expression) {
@@ -406,7 +420,6 @@ export class Codegen {
         }
     }
 
-
     genIdentifier(e: Expression) {
         const i = e as Identifier;
 
@@ -474,7 +487,9 @@ export class Codegen {
                 this.table[body.type]?.(body);
             }
 
-            if (block.terminated) return;
+            const current = this.h.builder.getInsertBlock();
+            if (!current || current.terminated) return;
+
             this.h.builder.br(afterBlock);
         });
 
@@ -493,7 +508,10 @@ export class Codegen {
                         this.table[body.type]?.(body);
                     }
 
-                    if (block.terminated) return;
+                    const current = this.h.builder.getInsertBlock();
+
+                    if (!current || current.terminated) return;
+
                     this.h.builder.br(afterBlock);
                 });
             }
@@ -503,6 +521,8 @@ export class Codegen {
         this.h.builder.condBr(cond, ifBlock, alternateBlock ?? afterBlock);
 
         this.h.builder.insertInto(afterBlock);
+        
+        return cond;
     }
 
     toLLVMType(type: TypeValue): Type {
@@ -515,8 +535,12 @@ export class Codegen {
                 return this.types["bool"]
             case "string":
                 return this.types["string"]
+            case "null":
+                return this.types["null"]
             case "any":
-                throw new Error(`cannot lower "any" to llvm type`)
+                throw new Error(`cannot lower "${type.kind}" to llvm type`)
+            default:
+                throw new Error(`unsupported type "${type.kind}"`);
         }
     }
 

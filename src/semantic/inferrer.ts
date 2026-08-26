@@ -1,6 +1,6 @@
 import { BinaryExpression, Expression, ExpressionType, FunctionCall, Identifier, MemberAccess, NumberLiteral, PreUnaryExpression, ReturnExpression } from "../parser/ast"
 import { FunctionSymbol, ModuleSymbol, ProgramSymbol, SemanticScope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
-import { FloatType, IntType, TypeValue } from "./types"
+import { FloatType, IntType, NullType, TypeValue } from "./types"
 
 export class SemanticInferrer {
     resolvedModules: Map<string, ModuleSymbol>
@@ -19,6 +19,7 @@ export class SemanticInferrer {
         NumberLiteral: this.inferNumberLiteral.bind(this),
         BooleanLiteral: this.inferBooleanLiteral.bind(this),
         StringLiteral: this.inferStringLiteral.bind(this),
+        NullLiteral: this.inferNullLiteral.bind(this),
         PreUnaryExpression: this.inferPreUnaryExpression.bind(this),
         PostUnaryExpression: this.inferPostUnaryExpression.bind(this),
         BinaryExpression: this.inferBinaryExpression.bind(this),
@@ -70,6 +71,12 @@ export class SemanticInferrer {
                 if (!fn.returnType.type) {
                     fn.returnType.type = type
                 }
+            }
+        }
+
+        if (fn.returnType.type === undefined || fn.returnType.type.kind === "null") {
+            fn.returnType.type = {
+                kind: "null"
             }
         }
 
@@ -213,6 +220,15 @@ export class SemanticInferrer {
     inferStringLiteral(e: Expression): TypeValue {
         const type: TypeValue = {
             kind: "string"
+        }
+
+        e.inferredType = type
+        return type
+    }
+
+    inferNullLiteral(e: Expression): TypeValue {
+        const type: NullType = {
+            kind: "null"
         }
 
         e.inferredType = type

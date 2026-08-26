@@ -4,7 +4,6 @@ import { platform } from "os";
 const location = platform() === "win32" ? "LLVM-C.dll" : "libLLVM-C.so";
 
 const lib = dlopen(location, {
-	LLVMConstStringInContext: { args: ["ptr", "cstring", "uint32_t", "bool"], returns: "ptr" },
 	LLVMArrayType: { args: ["ptr", "uint32_t"], returns: "ptr" },
 	LLVMAddGlobal: { args: ["ptr", "ptr", "cstring"], returns: "ptr" },
 	LLVMSetInitializer: { args: ["ptr", "ptr"], returns: "void" },
@@ -29,6 +28,8 @@ const lib = dlopen(location, {
 
 	LLVMFloatTypeInContext: { args: ["ptr"], returns: "ptr" },
 	LLVMDoubleTypeInContext: { args: ["ptr"], returns: "ptr" },
+
+	LLVMStructTypeInContext: { args: ["ptr", "ptr", "uint32_t", "bool"], returns: "ptr" },
 
 	LLVMVoidTypeInContext: { args: ["ptr"], returns: "ptr" },
 	LLVMPointerType: { args: ["ptr", "uint32_t"], returns: "ptr" },
@@ -65,6 +66,8 @@ const lib = dlopen(location, {
 	// constants
 	LLVMConstInt: { args: ["ptr", "uint64_t", "bool"], returns: "ptr" },
 	LLVMConstReal: { args: ["ptr", "double"], returns: "ptr" },
+	LLVMConstStringInContext: { args: ["ptr", "cstring", "uint32_t", "bool"], returns: "ptr" },
+	LLVMConstStructInContext: { args: ["ptr", "ptr", "uint32_t", "bool"], returns: "ptr" },
 
 	// utils
 	LLVMPrintModuleToString: { args: ["ptr"], returns: "cstring" },
@@ -91,6 +94,7 @@ export const {
 	LLVMInt64TypeInContext,
 	LLVMFloatTypeInContext,
 	LLVMDoubleTypeInContext,
+	LLVMStructTypeInContext,
 	LLVMVoidTypeInContext,
 	LLVMPointerType,
 
@@ -123,6 +127,7 @@ export const {
 	LLVMTypeOf,
 	LLVMConstInt,
 	LLVMConstReal,
+	LLVMConstStructInContext,
 	LLVMGetIntTypeWidth,
 	LLVMBuildAlloca,
 	LLVMBuildStore,
