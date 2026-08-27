@@ -1,5 +1,5 @@
 import { BasicBlock, Func, FunctionType, Linkage, MemoryValue, Type, Value } from "../bindings";
-import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, PostUnaryExpression, PreUnaryExpression, ReturnExpression, StringLiteral, VariableAssignment, VariableDeclaration } from "../parser/ast";
+import { BinaryExpression, BooleanLiteral, ElseExpression, Expression, ExpressionType, FunctionCall, FunctionDeclaration, Identifier, IfExpression, MemberAccess, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ReturnExpression, StringLiteral, VariableAssignment, VariableDeclaration, WhileExpression } from "../parser/ast";
 import { FunctionSymbol, ModuleSymbol } from "../semantic/symbols";
 import { TypeValue } from "../semantic/types";
 import { LLVMHelper } from "./helper";
@@ -9,7 +9,8 @@ export class Codegen {
     private module: ModuleSymbol;
 
     private h: LLVMHelper;
-    private scope: CodegenScope = new CodegenScope();
+    private scope = new CodegenScope();
+    private cfs = new ControlFlowState();
 
     private table: { [key in ExpressionType]?: (e: Expression) => Value | Func | undefined } = {
         FunctionCall: this.genFunctionCall.bind(this),
@@ -31,6 +32,10 @@ export class Codegen {
         VariableAssignment: this.genVariableAssignment.bind(this),
 
         IfExpression: this.genIfExpression.bind(this),
+        WhileExpression: this.genWhileExpression.bind(this),
+
+        ContinueExpression: this.genContinueExpression.bind(this),
+        BreakExpression: this.genBreakExpression.bind(this),
     }
 
     types: { [key: string]: Type }
@@ -471,58 +476,124 @@ export class Codegen {
     }
 
     genNumberLiteral(e: Expression) {
-        const n = e as Expression & { value: number };
-        return Value.constInt(this.types["int"], n.value);
-    }
+        const n = e as NumberLiteral
+        if (!n.inferredType) throw new Error(`number literal has no inferred type`);
 
+        return Value.constInt(this.toLLVMType(n.inferredType), n.value);
+    }
+    
     genIfExpression(e: Expression) {
         const iff = e as IfExpression;
+
+        const currentBlock = this.h.builder.getInsertBlock();
+        if (!currentBlock) throw new Error("failed to get current block");
 
         const cond = this.table[iff.condition.type]?.(iff.condition);
         if (!cond || !(cond instanceof Value)) throw new Error(`failed to generate condition for ${iff.condition.type}`);
 
         const afterBlock = this.h.block("after", () => {});
+        
+        let ifTerminated = false;
         const ifBlock = this.h.block("if", (block) => {
             for (const body of iff.body) {
                 this.table[body.type]?.(body);
             }
 
             const current = this.h.builder.getInsertBlock();
-            if (!current || current.terminated) return;
+            if (!current) throw new Error("failed to get current block");
 
-            this.h.builder.br(afterBlock);
+            ifTerminated = current.terminated;
+            if (!current.terminated) this.h.builder.br(afterBlock);
         });
 
-        const currentBlock = this.h.builder.getInsertBlock();
-        if (!currentBlock) throw new Error("failed to get current block");
-
         let alternateBlock: BasicBlock | undefined;
+        let alternateTerminated = false;
         if (iff.alternate) {
             if (iff.alternate.type === "IfExpression") {
-                alternateBlock = this.h.block("else-if", () => {
-                    this.genIfExpression(iff.alternate as IfExpression);
-                });
+                alternateBlock = this.h.block("else-if", () => this.genIfExpression(iff.alternate as IfExpression));
             } else if (iff.alternate.type === "ElseExpression") {
                 alternateBlock = this.h.block("else", (block) => {
                     for (const body of (iff.alternate as ElseExpression).body) {
                         this.table[body.type]?.(body);
                     }
-
+                    
                     const current = this.h.builder.getInsertBlock();
-
-                    if (!current || current.terminated) return;
-
-                    this.h.builder.br(afterBlock);
+                    if (!current) throw new Error("failed to get current block");
+                    alternateTerminated = current.terminated;
+                    if (!current.terminated) this.h.builder.br(afterBlock);
                 });
             }
         }
-
+        
         this.h.builder.insertInto(currentBlock);
         this.h.builder.condBr(cond, ifBlock, alternateBlock ?? afterBlock);
 
-        this.h.builder.insertInto(afterBlock);
-        
+        if (alternateBlock && ifTerminated && alternateTerminated) afterBlock.delete();
+        else this.h.builder.insertInto(afterBlock);
+
         return cond;
+    }
+
+    genWhileExpression(e: Expression) {
+        const w = e as WhileExpression;
+        const currentBlock = this.h.builder.getInsertBlock();
+        if (!currentBlock) throw new Error("failed to get current block")
+
+        const condBlock = this.h.block("cond", () => {});
+        const afterBlock = this.h.block("after", () => {});
+
+        this.h.builder.insertInto(currentBlock);
+        this.h.builder.br(condBlock);
+
+        const bodyBlock = this.h.block("body", () => {
+            this.cfs = this.cfs.push();
+
+            this.cfs.setBreakBlock(afterBlock);
+            this.cfs.setContinueBlock(condBlock);
+
+            for (const body of w.body) {
+                this.table[body.type]?.(body);
+            }
+
+            this.cfs = this.cfs.pop();
+
+            const current = this.h.builder.getInsertBlock();
+
+            if (current && !current.terminated) {
+                this.h.builder.br(condBlock);
+            }
+        });
+
+        this.h.builder.insertInto(condBlock);
+
+        const cond = this.table[w.condition.type]?.(w.condition);
+
+        if (!cond || !(cond instanceof Value)) {
+            throw new Error(
+                `failed to generate condition for ${w.condition.type}`
+            );
+        }
+
+        this.h.builder.condBr(cond, bodyBlock, afterBlock);
+        this.h.builder.insertInto(afterBlock);
+
+        return cond;
+    }
+
+    genBreakExpression(e: Expression) {
+        const target = this.cfs.getBreakBlock();
+        if (!target) throw new Error("break used outside of a loop");
+
+        this.h.builder.br(target);
+        return undefined;
+    }
+
+    genContinueExpression(e: Expression) {
+        const target = this.cfs.getContinueBlock();
+        if (!target) throw new Error("continue used outside of a loop");
+
+        this.h.builder.br(target);
+        return undefined;
     }
 
     toLLVMType(type: TypeValue): Type {
@@ -540,6 +611,7 @@ export class Codegen {
             case "any":
                 throw new Error(`cannot lower "${type.kind}" to llvm type`)
             default:
+                //@ts-expect-error
                 throw new Error(`unsupported type "${type.kind}"`);
         }
     }
@@ -547,6 +619,45 @@ export class Codegen {
     mangle(module: string, name: string) {
         if (module === "main" && name === "main") return "main";
         return `yt_${module.replaceAll("/", "_")}_${name}`;
+    }
+}
+
+export class ControlFlowState {
+    parent?: ControlFlowState;
+
+    private breakBlock?: BasicBlock;
+    private continueBlock?: BasicBlock;
+
+    constructor(parent?: ControlFlowState) {
+        this.parent = parent;
+    }
+
+    push() {
+        return new ControlFlowState(this);
+    }
+
+    pop() {
+        if (!this.parent) {
+            throw new Error("cannot pop higher than global control flow state");
+        }
+
+        return this.parent;
+    }
+
+    getBreakBlock(): BasicBlock | undefined {
+        return this.breakBlock ?? this.parent?.getBreakBlock();
+    }
+
+    getContinueBlock(): BasicBlock | undefined {
+        return this.continueBlock ?? this.parent?.getContinueBlock();
+    }
+
+    setBreakBlock(block: BasicBlock) {
+        this.breakBlock = block;
+    }
+
+    setContinueBlock(block: BasicBlock) {
+        this.continueBlock = block;
     }
 }
 

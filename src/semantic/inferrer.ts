@@ -1,4 +1,4 @@
-import { BinaryExpression, Expression, ExpressionType, FunctionCall, Identifier, MemberAccess, NumberLiteral, PreUnaryExpression, ReturnExpression } from "../parser/ast"
+import { BinaryExpression, ElseExpression, Expression, ExpressionType, FunctionCall, Identifier, IfExpression, MemberAccess, NumberLiteral, PreUnaryExpression, ReturnExpression, WhileExpression } from "../parser/ast"
 import { FunctionSymbol, ModuleSymbol, ProgramSymbol, SemanticScope, Symbol, SymbolKind, VariableSymbol } from "./symbols"
 import { FloatType, IntType, NullType, TypeValue } from "./types"
 
@@ -24,10 +24,15 @@ export class SemanticInferrer {
         PostUnaryExpression: this.inferPostUnaryExpression.bind(this),
         BinaryExpression: this.inferBinaryExpression.bind(this),
         Identifier: this.inferIdentifier.bind(this),
+        IfExpression: this.inferIfExpression.bind(this),
+        ElseExpression: this.inferElseExpression.bind(this),
+        WhileExpression: this.inferWhileExpression.bind(this),
         ReturnExpression: this.inferReturnExpression.bind(this),
         FunctionCall: this.inferFunctionCall.bind(this),
         MemberAccess: this.inferMemberAccess.bind(this)
     }
+
+    currentFunction?: FunctionSymbol
 
     constructor(resolvedModules: Map<string, ModuleSymbol>) {
         this.resolvedModules = resolvedModules
@@ -53,7 +58,7 @@ export class SemanticInferrer {
 
     inferFunction(s: Symbol): Symbol {
         const fn = s as FunctionSymbol
-
+        this.currentFunction = fn
         this.scope = fn.scope
 
         for (const symbol of fn.scope.symbols.values()) {
@@ -62,16 +67,6 @@ export class SemanticInferrer {
 
         for (const expression of fn.expression.body) {
             const type = this.expressions[expression.type]?.(expression)
-
-            if (expression.type === "ReturnExpression") {
-                if (!type) {
-                    throw new Error(`cannot infer return type`)
-                }
-
-                if (!fn.returnType.type) {
-                    fn.returnType.type = type
-                }
-            }
         }
 
         if (fn.returnType.type === undefined || fn.returnType.type.kind === "null") {
@@ -123,7 +118,6 @@ export class SemanticInferrer {
         }
 
         const variable = symbol as VariableSymbol
-
         if (!variable.typeHolder.type) {
             throw new Error(`type of "${id.value}" is unresolved`)
         }
@@ -177,6 +171,56 @@ export class SemanticInferrer {
 
         return type
     }
+    
+    inferIfExpression(e: Expression): TypeValue {
+        const i = e as IfExpression
+
+        const cond = this.expressions[i.condition.type]?.(i.condition)
+        if (!cond || cond.kind !== "bool") {
+            throw new Error(`condition of if expression must be a boolean`)
+        }
+        i.inferredType = cond
+
+        for (const expr of i.body) {
+            const type = this.expressions[expr.type]?.(expr)
+        }
+
+        if (i.alternate) {
+            const type = this.expressions[i.alternate.type]?.(i.alternate)
+        }
+
+        return cond
+    }
+
+    inferElseExpression(e: Expression): TypeValue {
+        const i = e as ElseExpression
+
+        for (const expr of i.body) {
+            this.expressions[expr.type]?.(expr)
+        }
+
+        const type: NullType = {
+            kind: "null"
+        }
+
+        e.inferredType = type
+        return type
+    }
+
+    inferWhileExpression(e: Expression): TypeValue {
+        const w = e as WhileExpression
+        const cond = this.expressions[w.condition.type]?.(w.condition)
+        if (!cond || cond.kind !== "bool") {
+            throw new Error(`condition of while expression must be a boolean`)
+        }
+        w.inferredType = cond
+
+        for (const expr of w.body) {
+            const type = this.expressions[expr.type]?.(expr)
+        }
+
+        return cond
+    }
 
     inferReturnExpression(e: Expression): TypeValue {
         const r = e as ReturnExpression
@@ -189,6 +233,10 @@ export class SemanticInferrer {
         }
 
         e.inferredType = type
+
+        if (this.currentFunction && !this.currentFunction.returnType.type) {
+            this.currentFunction.returnType.type = type
+        }
 
         return type
     }

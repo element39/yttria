@@ -22,6 +22,8 @@ export type ExpressionType =
     | "ElseExpression"
 
     | "WhileExpression"
+    | "ContinueExpression"
+    | "BreakExpression"
 
     | "SwitchExpression"
     | "CaseExpression"
@@ -101,6 +103,14 @@ export type WhileExpression = Expression & {
     type: "WhileExpression"
     condition: Expression
     body: Expression[]
+}
+
+export type ContinueExpression = Expression & {
+    type: "ContinueExpression"
+}
+
+export type BreakExpression = Expression & {
+    type: "BreakExpression"
 }
 
 export type SwitchExpression = Expression & {

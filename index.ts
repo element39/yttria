@@ -11,17 +11,16 @@ import { ModuleSymbol } from "./src/semantic/symbols"
 rmSync("./out", { recursive: true, force: true })
 
 const program = `
-use std/io
-
 pub fn main() {
-    if (true) {
-        if (false) {
-            io.println("no")
-        } else {
-            io.println("yes")
-        }
+    let x := 3
+    
+    if (x == 5) {
+        x++
+    } else {
+        x--
     }
-    return 0
+
+    return x
 }
 `.trim()
 

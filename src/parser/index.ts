@@ -1,5 +1,5 @@
 import { Keyword, Modifier, Modifiers, Token, TokenType } from "../lexer/token"
-import { BinaryExpression, BooleanLiteral, CaseExpression, CommentExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, ImportExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableAssignment, VariableDeclaration, WhileExpression } from "./ast"
+import { BinaryExpression, BooleanLiteral, BreakExpression, CaseExpression, CommentExpression, ContinueExpression, ElseExpression, Expression, FunctionCall, FunctionDeclaration, FunctionParam, Identifier, IfExpression, ImportExpression, MemberAccess, NullLiteral, NumberLiteral, PostUnaryExpression, PreUnaryExpression, ProgramExpression, ReturnExpression, StringLiteral, SwitchExpression, VariableAssignment, VariableDeclaration, WhileExpression } from "./ast"
 export class Parser {
     tokens: Token[]
     program: ProgramExpression = {
@@ -246,6 +246,8 @@ export class Parser {
             "const": () => this.parseVariableDeclaration.bind(this)(false),
             "switch": this.parseSwitchExpression.bind(this),
             "use": this.parseImportExpression.bind(this),
+            "break": this.parseBreakExpression.bind(this),
+            "continue": this.parseContinueExpression.bind(this),
         }
 
         if (t.literal in table) {
@@ -590,6 +592,18 @@ export class Parser {
             type: "ImportExpression",
             path,
             alias
+        }
+    }
+
+    private parseBreakExpression(): BreakExpression {
+        return {
+            type: "BreakExpression"
+        }
+    }
+
+    private parseContinueExpression(): ContinueExpression {
+        return {
+            type: "ContinueExpression"
         }
     }
 

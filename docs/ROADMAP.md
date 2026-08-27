@@ -19,7 +19,8 @@ current version: `v0.0.3.alpha-1`
   lexer             100%     █████████████      practically complete
   parser            100%     █████████████      practically complete
   typechecker       90%      ███████████▓░      complete soon
-  codegen           70%      █████████▓░░░      actively being developed
+  codegen           80%      ██████████▓░░      actively being developed
+  self-hosting       0%      ░░░░░░░░░░░░░      no eta
 ```
 
 ### std
